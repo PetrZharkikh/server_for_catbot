@@ -4,6 +4,8 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
+const USER_AGENT = "CatBot/1.0 (https://server-for-catbot.onrender.com)";
+
 app.post("/webhook", async (req, res) => {
   console.log("Webhook body:", JSON.stringify(req.body, null, 2));
 
@@ -16,37 +18,64 @@ app.post("/webhook", async (req, res) => {
     });
   }
 
-  const url = `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(breed)}`;
+  try {
+    // 1) Ищем породу
+    const searchUrl = `https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      breed
+    )}&format=json&utf8=1`;
 
-try {
-  const r = await axios.get(url, {
-    headers: {
-      "User-Agent": "CatBot/1.0 (https://server-for-catbot.onrender.com)"
+    console.log("Search URL:", searchUrl);
+
+    const searchResp = await axios.get(searchUrl, {
+      headers: { "User-Agent": USER_AGENT }
+    });
+
+    const bestMatch = searchResp.data?.query?.search?.[0];
+    console.log("Best match from search:", bestMatch);
+
+    if (!bestMatch) {
+      return res.json({
+        fulfillmentText: "К сожалению, я не нашёл информацию об этой породе."
+      });
     }
-  });
 
-  const summary =
-    r.data?.extract || "К сожалению, я не нашёл информации об этой породе.";
+    const title = bestMatch.title;
+    console.log("Using title:", title);
 
-  return res.json({
-    fulfillmentText: summary
-  });
+    // 2) Берём summary по найденному title
+    const summaryUrl = `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
+      title
+    )}`;
+    console.log("Summary URL:", summaryUrl);
 
-} catch (e) {
-  console.error(
-    "Error while calling Wikipedia:",
-    e?.response?.status,
-    e?.response?.data || e.message
-  );
+    const summaryResp = await axios.get(summaryUrl, {
+      headers: { "User-Agent": USER_AGENT }
+    });
 
-  return res.json({
-    fulfillmentText: "Не смог найти информацию об этой породе 😿"
-  });
-}
+    const summary =
+      summaryResp.data?.extract ||
+      "К сожалению, я не нашёл информации об этой породе.";
+
+    console.log("Summary to send:", summary);
+
+    return res.json({
+      fulfillmentText: summary
+    });
+
+  } catch (e) {
+    console.error(
+      "Error while calling Wikipedia:",
+      e?.response?.status,
+      e?.response?.data || e.message
+    );
+
+    return res.json({
+      fulfillmentText: "Не смог найти информацию об этой породе 😿"
+    });
+  }
 });
 
 app.get("/", (req, res) => res.send("CatBot server works!"));
 
-// ВАЖНО для Render:
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
