@@ -8,8 +8,6 @@ app.post("/webhook", async (req, res) => {
   console.log("Webhook body:", JSON.stringify(req.body, null, 2));
   const breed = req.body.queryResult?.parameters?.breed;
   console.log("Breed param:", breed);
-  
-  const breed = req.body.queryResult?.parameters?.breed;
 
   if (!breed) {
     return res.json({
