@@ -6,216 +6,177 @@ app.use(express.json());
 
 const USER_AGENT = "CatBot/1.0 (https://server-for-catbot.onrender.com)";
 
-// ---- вспомогательные функции ----
+// -----------------------------------------------
+// Utility: random choice
+const randomChoice = arr => arr[Math.floor(Math.random() * arr.length)];
 
-// случайный элемент из массива
-function randomChoice(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// достаём породу из параметров или контекста
-function getBreedFromReq(req) {
+// -----------------------------------------------
+// Utility: extract breed from parameters OR context
+function getBreed(req) {
   const qr = req.body.queryResult || {};
-  let breed = qr.parameters?.breed;
 
-  if (breed) return breed;
+  if (qr.parameters?.breed) return qr.parameters.breed;
 
-  const contexts = qr.outputContexts || [];
-  for (const ctx of contexts) {
-    if (ctx.parameters?.breed) {
-      return ctx.parameters.breed;
-    }
+  for (const ctx of qr.outputContexts || []) {
+    if (ctx.parameters?.breed) return ctx.parameters.breed;
   }
 
   return null;
 }
 
-// получаем summary породы из Википедии (поиск + summary)
-async function getBreedSummary(breed) {
-  // 1) поиск
+// -----------------------------------------------
+// Cleanup summary so responses are shorter & clearer
+function cleanSummary(text) {
+  if (!text) return "";
+
+  let parts = text.split(". ").map(s => s.trim());
+
+  // Remove generic definitions like "X — порода кошек"
+  if (/—|является|порода|семейство|вид/i.test(parts[0])) {
+    parts.shift();
+  }
+
+  // Return only the essence: 1–2 sentences
+  return parts.slice(0, 2).join(". ") + ".";
+}
+
+// -----------------------------------------------
+// Search for breed article in Wikipedia
+async function searchBreedArticle(breed) {
+  const query = breed + " кошка";
+
   const searchUrl =
     "https://ru.wikipedia.org/w/api.php" +
-    `?action=query&list=search&srsearch=${encodeURIComponent(breed)}` +
-    "&format=json&utf8=1";
+    `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(
+      query
+    )}`;
 
-  const searchResp = await axios.get(searchUrl, {
+  const r = await axios.get(searchUrl, {
     headers: { "User-Agent": USER_AGENT }
   });
 
-  const bestMatch = searchResp.data?.query?.search?.[0];
-  if (!bestMatch) {
-    return null;
-  }
+  const results = r.data?.query?.search || [];
+  if (!results.length) return null;
 
-  const title = bestMatch.title;
+  // Prefer results that clearly refer to cats
+  const match =
+    results.find(r => /кошка|кот|порода/i.test(r.title)) ||
+    results[0];
 
-  // 2) summary по title
+  return match.title;
+}
+
+// -----------------------------------------------
+// Get clean summary
+async function getBreedSummary(breed) {
+  const title = await searchBreedArticle(breed);
+  if (!title) return null;
+
   const summaryUrl =
     "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
     encodeURIComponent(title);
 
-  const summaryResp = await axios.get(summaryUrl, {
+  const r = await axios.get(summaryUrl, {
     headers: { "User-Agent": USER_AGENT }
   });
 
-  return {
-    title,
-    text:
-      summaryResp.data?.extract ||
-      "К сожалению, я не нашёл информации об этой породе."
-  };
+  return cleanSummary(r.data?.extract || "");
 }
 
-// простая база по уходу
-function getCareText(breed) {
-  const b = (breed || "").toLowerCase();
+// -----------------------------------------------
+// Simple local info for "care"
+function getCareInfo(breed) {
+  const b = breed.toLowerCase();
 
-  if (b.includes("сиам")) {
-    return "Сиамские кошки очень общительные и активные. Им важно уделять много внимания, играть каждый день и следить за чистотой ушей и глаз. Шерсть короткая, поэтому достаточно иногда вычёсывать мягкой щёткой.";
-  }
+  if (b.includes("сиам"))
+    return "Сиамские кошки активные, требуют ежедневной игровой нагрузки и периодической мягкой чистки шерсти.";
 
-  if (b.includes("мейн") || b.includes("кун")) {
-    return "Мейн-куны крупные и пушистые, поэтому их лучше вычёсывать несколько раз в неделю, особенно в период линьки. Обязательно нужны устойчивые когтеточки и активные игры — это большие, но добрые коты.";
-  }
+  if (b.includes("мейн") || b.includes("кун"))
+    return "Мейн-куны нуждаются в регулярном вычёсывании 2–3 раза в неделю и устойчивых когтеточках.";
 
-  if (b.includes("британ")) {
-    return "Британские кошки обычно спокойные, но им тоже нужны игры и внимание. Уход включает регулярное вычёсывание плотной шерсти, контроль веса и качественный корм — они легко набирают лишнее.";
-  }
+  if (b.includes("британ"))
+    return "Британским кошкам требуется регулярное вычёсывание плотной шерсти и контроль питания.";
 
-  // дефолт
-  return `В целом уход за породой ${breed} включает три вещи: качественное питание, регулярные игры и базовый уход за шерстью и когтями. Если хочешь, я могу подсказать общие правила содержания домашней кошки 🐾`;
+  return `Уход за породой «${breed}» подразумевает регулярное вычёсывание, игры и доступ к чистой воде.`;
 }
 
-// простая база по питанию
-function getFoodText(breed) {
-  const b = (breed || "").toLowerCase();
+// -----------------------------------------------
+// Simple local info for "food"
+function getFoodInfo(breed) {
+  const b = breed.toLowerCase();
 
-  if (b.includes("сиам")) {
-    return "Для сиамских кошек хорошо подходят качественные промышленные корма супер-премиум класса или рацион, согласованный с ветеринаром. Важно следить за весом и не перекармливать — они активные, но худоба не всегда норма.";
-  }
+  if (b.includes("сиам"))
+    return "Сиамским кошкам подходят корма супер-премиум класса с контролем веса.";
 
-  if (b.includes("мейн") || b.includes("кун")) {
-    return "Мейн-кунам нужен корм для крупных пород или просто высококачественный рацион с достаточным содержанием белка. Важно не допускать лишнего веса и давать достаточно воды.";
-  }
+  if (b.includes("мейн") || b.includes("кун"))
+    return "Мейн-кунам нужен высокобелковый корм и достаточное количество воды.";
 
-  if (b.includes("британ")) {
-    return "Британцам часто рекомендуют корма для стерилизованных кошек и контроль калорий — у них есть склонность к полноте. Вода — всегда в свободном доступе, лакомства — по минимуму.";
-  }
+  if (b.includes("британ"))
+    return "Британцам подходит корм с пониженной калорийностью из-за склонности к полноте.";
 
-  return `Обычно для породы ${breed} подойдёт качественный промышленный корм супер-премиум класса или натуральный рацион, но составленный совместно с ветеринаром. Главное — не кормить со стола и следить за весом 😼`;
+  return `Для «${breed}» рекомендуется корм высокого качества или рацион по рекомендации ветеринара.`;
 }
 
-// ---- основной webhook ----
-
+// -----------------------------------------------
+// Main webhook
 app.post("/webhook", async (req, res) => {
-  console.log("Webhook body:", JSON.stringify(req.body, null, 2));
-
-  const qr = req.body.queryResult || {};
-  const intent = qr.intent?.displayName || "UnknownIntent";
-  let breed = getBreedFromReq(req);
-
-  console.log("Intent:", intent);
-  console.log("Breed param (resolved):", breed);
+  const intent = req.body.queryResult?.intent?.displayName;
+  const breed = getBreed(req);
 
   try {
-    // --- INTENT: информация о породе ---
+    // ---------------------------------------
+    // 1. Breed description
     if (intent === "AskBreedInfo") {
       if (!breed) {
+        return res.json({ fulfillmentText: "Укажите породу." });
+      }
+
+      const summary = await getBreedSummary(breed);
+      if (!summary) {
         return res.json({
-          fulfillmentText: "Не понял, какую породу ты ищешь 😿 Назови, пожалуйста, породу."
+          fulfillmentText: `Информация о «${breed}» не найдена. Уточните название.`
         });
       }
 
-      const info = await getBreedSummary(breed);
-
-      if (!info) {
-        return res.json({
-          fulfillmentText: `Я не смог найти информацию про породу «${breed}» 😿 Может, попробуем ещё раз или укажем полное название?`
-        });
-      }
-
-      const templates = [
-        `😺 Вот что я нашёл про породу «${info.title}»:\n\n${info.text}`,
-        `Если коротко про «${info.title}»: ${info.text}`,
-        `Хороший выбор! Порода «${info.title}» — это интересно. Вот что про неё пишут:\n\n${info.text}`,
-        `Давай расскажу про «${info.title}» 🐾\n\n${info.text}`
-      ];
-
-      const answer = randomChoice(templates);
-
-      return res.json({
-        fulfillmentText: answer
-      });
+      return res.json({ fulfillmentText: summary });
     }
 
-    // --- INTENT: уход за породой ---
+    // ---------------------------------------
+    // 2. Care info
     if (intent === "AskCareInfo") {
       if (!breed) {
-        return res.json({
-          fulfillmentText: "За какой породой ты хочешь научиться ухаживать? 😺"
-        });
+        return res.json({ fulfillmentText: "Укажите породу." });
       }
 
-      const care = getCareText(breed);
-
-      const templates = [
-        `По уходу за породой «${breed}» могу сказать так:\n\n${care}`,
-        `😺 Уход за породой «${breed}» в общих чертах такой:\n\n${care}`,
-        `Если говорить про уход за «${breed}», важно помнить следующее:\n\n${care}`
-      ];
-
-      const answer = randomChoice(templates);
-
-      return res.json({
-        fulfillmentText: answer
-      });
+      return res.json({ fulfillmentText: getCareInfo(breed) });
     }
 
-    // --- INTENT: питание породы ---
+    // ---------------------------------------
+    // 3. Food info
     if (intent === "AskFoodInfo") {
       if (!breed) {
-        return res.json({
-          fulfillmentText: "Для какой породы ты хочешь подобрать питание? 🐾"
-        });
+        return res.json({ fulfillmentText: "Укажите породу." });
       }
 
-      const food = getFoodText(breed);
-
-      const templates = [
-        `По питанию породы «${breed}» могу подсказать следующее:\n\n${food}`,
-        `😺 Кормить породу «${breed}» лучше так:\n\n${food}`,
-        `Если коротко про питание для «${breed}»:\n\n${food}`
-      ];
-
-      const answer = randomChoice(templates);
-
-      return res.json({
-        fulfillmentText: answer
-      });
+      return res.json({ fulfillmentText: getFoodInfo(breed) });
     }
 
-    // --- DEFAULT: вдруг что-то пошло не так ---
+    // ---------------------------------------
+    // DEFAULT
     return res.json({
-      fulfillmentText:
-        "Мяу, я пока не очень понял, чего ты хочешь 😿 Попробуй спросить про породу, уход или питание."
+      fulfillmentText: "Я отвечаю на вопросы о породах, уходе и питании."
     });
 
-  } catch (e) {
-    console.error(
-      "Global error in webhook:",
-      e?.response?.status,
-      e?.response?.data || e.message
-    );
-
+  } catch (err) {
+    console.error("ERROR:", err);
     return res.json({
-      fulfillmentText:
-        "Со мной что-то пошло не так, шуршу усами и пытаюсь разобраться 😿 Попробуй чуть позже."
+      fulfillmentText: "Произошла ошибка. Попробуйте позже."
     });
   }
 });
 
+// -----------------------------------------------
 app.get("/", (req, res) => res.send("CatBot server works!"));
 
-// ВАЖНО для Render:
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => console.log("CatBot ready on port", PORT));
