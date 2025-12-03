@@ -17,28 +17,32 @@ app.post("/webhook", async (req, res) => {
   }
 
   const url = `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(breed)}`;
-  console.log("Wikipedia URL:", url);
 
-  try {
-    const r = await axios.get(url);
-    console.log("Wiki response keys:", Object.keys(r.data));
+try {
+  const r = await axios.get(url, {
+    headers: {
+      "User-Agent": "CatBot/1.0 (https://server-for-catbot.onrender.com)"
+    }
+  });
 
-    const summary =
-      r.data?.extract || "К сожалению, я не нашёл информации об этой породе.";
+  const summary =
+    r.data?.extract || "К сожалению, я не нашёл информации об этой породе.";
 
-    console.log("Summary to send:", summary);
+  return res.json({
+    fulfillmentText: summary
+  });
 
-    return res.json({
-      fulfillmentText: summary
-    });
+} catch (e) {
+  console.error(
+    "Error while calling Wikipedia:",
+    e?.response?.status,
+    e?.response?.data || e.message
+  );
 
-  } catch (e) {
-    console.error("Error while calling Wikipedia:", e?.response?.status, e?.response?.data || e.message);
-
-    return res.json({
-      fulfillmentText: "Не смог найти информацию об этой породе 😿"
-    });
-  }
+  return res.json({
+    fulfillmentText: "Не смог найти информацию об этой породе 😿"
+  });
+}
 });
 
 app.get("/", (req, res) => res.send("CatBot server works!"));
