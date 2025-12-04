@@ -6,7 +6,7 @@ app.use(express.json());
 
 const USER_AGENT = "CatBot/1.0 (https://server-for-catbot.onrender.com)";
 
-// -----------------------------------------
+// ----------------------------------------
 // Utility: extract breed
 function getBreed(req) {
   const qr = req.body.queryResult || {};
