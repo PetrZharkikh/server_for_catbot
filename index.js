@@ -6,171 +6,161 @@ app.use(express.json());
 
 const USER_AGENT = "CatBot/1.0 (https://server-for-catbot.onrender.com)";
 
-const randomChoice = arr => arr[Math.floor(Math.random() * arr.length)];
-
-// -------------------
-// Breed extraction
+// -----------------------------------------
+// Utility: extract breed
 function getBreed(req) {
   const qr = req.body.queryResult || {};
-
   if (qr.parameters?.breed) return qr.parameters.breed;
 
-  for (const c of qr.outputContexts || []) {
-    if (c.parameters?.breed) return c.parameters.breed;
-  }
+  for (const ctx of qr.outputContexts || [])
+    if (ctx.parameters?.breed) return ctx.parameters.breed;
 
   return null;
 }
 
-// -------------------
-// Clean summary for description
+// -----------------------------------------
+// Clean summary → 1–2 предложения
 function cleanSummary(text) {
   if (!text) return "";
-
   text = text.replace(/\s+/g, " ").trim();
-
   const sentences = text.split(/(?<=[.!?])\s+/);
-  return sentences.slice(0, 2).join(" ");
+  return sentences.slice(0, 2).join(" ").trim();
 }
 
-// -------------------
-// Wikipedia search
+// -----------------------------------------
+// Wikipedia search (this is stable)
 async function searchBreedArticle(breed) {
   const query = breed + " кошка";
 
-  const searchUrl =
+  const url =
     "https://ru.wikipedia.org/w/api.php" +
-    `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(
-      query
-    )}`;
+    `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(query)}`;
 
-  const r = await axios.get(searchUrl, {
-    headers: { "User-Agent": USER_AGENT }
-  });
-
+  const r = await axios.get(url, { headers: { "User-Agent": USER_AGENT } });
   const results = r.data?.query?.search || [];
   if (!results.length) return null;
 
-  const match =
+  return (
     results.find(x => /кошка|кот|порода/i.test(x.title)) ||
-    results[0];
-
-  return match.title;
+    results[0]
+  ).title;
 }
 
-// -------------------
-// Description: using summary
+// -----------------------------------------
+// Get clean summary of breed
 async function getBreedSummary(breed) {
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
+  // summary endpoint is OK and supported
   const url =
     "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
     encodeURIComponent(title);
 
-  const r = await axios.get(url, {
-    headers: { "User-Agent": USER_AGENT }
-  });
-
+  const r = await axios.get(url, { headers: { "User-Agent": USER_AGENT } });
   return cleanSummary(r.data?.extract || "");
 }
 
-// -------------------
-// FULL article for care/food extraction
-async function getFullArticleSections(title) {
+// -----------------------------------------
+// Get wiki source (the modern correct API)
+async function getArticleSource(title) {
   const url =
-    "https://ru.wikipedia.org/api/rest_v1/page/mobile-sections/" +
+    "https://ru.wikipedia.org/w/rest.php/v1/page/" +
     encodeURIComponent(title);
 
-  const r = await axios.get(url, {
-    headers: { "User-Agent": USER_AGENT }
-  });
-
-  return r.data?.remaining?.sections || [];
+  const r = await axios.get(url, { headers: { "User-Agent": USER_AGENT } });
+  return r.data?.source || "";
 }
 
-// -------------------
-// Extract section by keywords
-function extractSection(sections, keywords) {
+// -----------------------------------------
+// Extract section from wiki markup
+function extractSection(source, keywords) {
+  if (!source) return null;
+
+  const lines = source.replace(/\r/g, "").split("\n");
+  let capturing = false;
+  let buffer = [];
+
   const lower = s => s.toLowerCase();
 
-  for (const sec of sections) {
-    if (!sec.line) continue;
-    const header = lower(sec.line);
+  for (let line of lines) {
+    const trimmed = line.trim();
+    const header = trimmed.match(/^==+\s*(.+?)\s*==+$/);
 
-    if (keywords.some(k => header.includes(k))) {
-      const text = sec.text
-        .replace(/<\/?[^>]+(>|$)/g, "") // remove html tags
-        .replace(/\s+/g, " ")
-        .trim();
-      return cleanSummary(text);
+    if (header) {
+      const h = lower(header[1]);
+      if (keywords.some(k => h.includes(k))) {
+        capturing = true;
+        continue;
+      }
+      if (capturing) break;
     }
+
+    if (capturing) buffer.push(trimmed);
   }
 
-  return null;
+  if (!buffer.length) return null;
+
+  let text = buffer.join(" ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  return cleanSummary(text);
 }
 
-// -------------------
-// Main: care info (intelligent)
+// -----------------------------------------
+// care info from wiki
 async function getCareInfo(breed) {
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
-  const sections = await getFullArticleSections(title);
-  const section = extractSection(sections, [
+  const source = await getArticleSource(title);
+
+  return extractSection(source, [
     "уход",
     "содержание",
     "груминг",
     "здоров",
-    "groom",
-    "care",
-    "health"
+    "health",
+    "care"
   ]);
-
-  return section;
 }
 
-// -------------------
-// Main: food info (intelligent)
+// -----------------------------------------
+// food info from wiki
 async function getFoodInfo(breed) {
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
-  const sections = await getFullArticleSections(title);
-  const section = extractSection(sections, [
+  const source = await getArticleSource(title);
+
+  return extractSection(source, [
     "питание",
     "корм",
+    "кормление",
+    "рацион",
     "diet",
-    "food",
-    "ration"
+    "food"
   ]);
-
-  return section;
 }
 
-// -------------------
-// Webhook
+// -----------------------------------------
+// Dialogflow webhook
 app.post("/webhook", async (req, res) => {
   const intent = req.body.queryResult?.intent?.displayName;
   const breed = getBreed(req);
 
   try {
-    // ----- DESCRIPTION -----
+    // DESCRIPTION
     if (intent === "AskBreedInfo") {
-      if (!breed)
-        return res.json({ fulfillmentText: "Укажите породу." });
+      if (!breed) return res.json({ fulfillmentText: "Укажите породу." });
 
       const summary = await getBreedSummary(breed);
-      if (!summary)
-        return res.json({ fulfillmentText: "Информация не найдена." });
+      if (!summary) return res.json({ fulfillmentText: "Информация не найдена." });
 
       return res.json({ fulfillmentText: summary });
     }
 
-    // ----- CARE -----
+    // CARE
     if (intent === "AskCareInfo") {
-      if (!breed)
-        return res.json({ fulfillmentText: "Укажите породу." });
+      if (!breed) return res.json({ fulfillmentText: "Укажите породу." });
 
       const care = await getCareInfo(breed);
       if (!care)
@@ -181,10 +171,9 @@ app.post("/webhook", async (req, res) => {
       return res.json({ fulfillmentText: care });
     }
 
-    // ----- FOOD -----
+    // FOOD
     if (intent === "AskFoodInfo") {
-      if (!breed)
-        return res.json({ fulfillmentText: "Укажите породу." });
+      if (!breed) return res.json({ fulfillmentText: "Укажите породу." });
 
       const food = await getFoodInfo(breed);
       if (!food)
@@ -198,17 +187,15 @@ app.post("/webhook", async (req, res) => {
     return res.json({
       fulfillmentText: "Я отвечаю на вопросы о породах, уходе и питании."
     });
-
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error("ERROR:", err);
     return res.json({
       fulfillmentText: "Ошибка обработки данных."
     });
   }
 });
 
-// -------------------
+// -----------------------------------------
 app.get("/", (req, res) => res.send("CatBot is running."));
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Ready:", PORT));
