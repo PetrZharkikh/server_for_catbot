@@ -410,11 +410,22 @@ async function searchKoshkiWikiBreed(breed) {
         timeout: 5000
       });
       
-      if (response.status === 200 && 
-          !response.data.includes("Запрашиваемая страница не найдена") &&
-          !response.data.includes("404") &&
-          response.data.length > 5000) { // Проверяем, что страница не пустая
-        return { url, html: response.data };
+      if (response.status === 200) {
+        const html = response.data;
+        // Проверяем, что это не страница ошибки и есть нужные разделы
+        if (!html.includes("Запрашиваемая страница не найдена") &&
+            !html.includes('class="error404"') &&
+            html.length > 10000 && // Страница должна быть достаточно большой
+            (html.includes("Рекомендации по уходу") || html.includes('id="i-6"'))) { // Должен быть раздел об уходе
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Found valid page at ${url} (${html.length} bytes)`);
+          }
+          return { url, html };
+        } else {
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Page at ${url} is not valid`);
+          }
+        }
       }
     } catch (err) {
       if (process.env.DEBUG === 'true') {
@@ -442,37 +453,55 @@ async function getCareInfoFromKoshkiWiki(breed) {
     const $ = cheerio.load(result.html);
     let careText = "";
 
-    // Ищем разделы с заголовками об уходе (h2, h3, h4)
-    $("h2, h3, h4").each((i, elem) => {
-      const heading = $(elem).text().toLowerCase().trim();
-      if (/уход|содержание|груминг|здоровье|гигиена|забота|рекомендации по уходу/i.test(heading)) {
+    // Ищем раздел "Рекомендации по уходу" - стандартный раздел на всех страницах
+    $("h2").each((i, elem) => {
+      const heading = $(elem).text().trim();
+      const headingId = $(elem).find("span").attr("id") || "";
+      
+      // Точное совпадение или по ID якоря
+      if (heading === "Рекомендации по уходу" || headingId === "i-6") {
+        
         let sectionText = "";
-        let next = $(elem).next();
+        let current = $(elem).next();
         let depth = 0;
         
-        // Собираем текст до следующего заголовка того же или более высокого уровня
-        while (next.length && depth < 50) {
-          if (next.is("h2, h3, h4")) {
-            const nextLevel = next.prop("tagName").match(/\d/)?.[0] || "2";
-            const currentLevel = $(elem).prop("tagName").match(/\d/)?.[0] || "2";
-            if (parseInt(nextLevel) <= parseInt(currentLevel)) {
-              break;
+        // Собираем весь контент до следующего h2
+        while (current.length && depth < 100) {
+          if (current.is("h2")) break;
+          
+          if (current.is("p")) {
+            const text = current.text().trim();
+            if (text.length > 10) sectionText += text + " ";
+          } else if (current.is("ul, ol")) {
+            current.find("li").each((j, li) => {
+              const liText = $(li).text().trim();
+              if (liText.length > 10) sectionText += liText + " ";
+            });
+          } else if (current.is("h3, h4")) {
+            const subHeading = current.text().trim();
+            if (subHeading.length > 5) sectionText += subHeading + ". ";
+            let subNext = current.next();
+            let subDepth = 0;
+            while (subNext.length && !subNext.is("h2, h3") && subDepth < 20) {
+              if (subNext.is("p")) {
+                const text = subNext.text().trim();
+                if (text.length > 10) sectionText += text + " ";
+              }
+              subNext = subNext.next();
+              subDepth++;
             }
+          } else if (current.is("div.post__yellow, div.post__green, div.post__blue")) {
+            const text = current.text().trim();
+            if (text.length > 10) sectionText += text + " ";
           }
           
-          if (next.is("p, li, div.content, div.entry-content")) {
-            const text = next.text().trim();
-            if (text.length > 20) {
-              sectionText += " " + text;
-            }
-          }
-          
-          next = next.next();
+          current = current.next();
           depth++;
         }
         
-        if (sectionText.length > 50) {
-          careText += sectionText + " ";
+        if (sectionText.length > 100) {
+          careText = sectionText;
+          return false;
         }
       }
     });
@@ -516,37 +545,65 @@ async function getFoodInfoFromKoshkiWiki(breed) {
     const $ = cheerio.load(result.html);
     let foodText = "";
 
-    // Ищем разделы с заголовками о питании (h2, h3, h4)
-    $("h2, h3, h4").each((i, elem) => {
-      const heading = $(elem).text().toLowerCase().trim();
-      if (/питание|корм|кормление|рацион|еда|организация питания/i.test(heading)) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki: Parsing page for "${breed}", URL: ${result.url}`);
+    }
+
+    // Ищем раздел "Организация питания" - стандартный раздел на всех страницах
+    $("h2").each((i, elem) => {
+      const heading = $(elem).text().trim();
+      const headingId = $(elem).find("span").attr("id") || "";
+      
+      if (process.env.DEBUG === 'true' && i < 10) {
+        console.log(`Found h2: "${heading}", id: "${headingId}"`);
+      }
+      
+      // Точное совпадение "Организация питания" или по ID якоря i-12
+      if (heading === "Организация питания" || headingId === "i-12") {
+        if (process.env.DEBUG === 'true') {
+          console.log(`Found food section!`);
+        }
         let sectionText = "";
-        let next = $(elem).next();
+        let current = $(elem).next();
         let depth = 0;
         
-        // Собираем текст до следующего заголовка того же или более высокого уровня
-        while (next.length && depth < 50) {
-          if (next.is("h2, h3, h4")) {
-            const nextLevel = next.prop("tagName").match(/\d/)?.[0] || "2";
-            const currentLevel = $(elem).prop("tagName").match(/\d/)?.[0] || "2";
-            if (parseInt(nextLevel) <= parseInt(currentLevel)) {
-              break;
+        // Собираем весь контент до следующего h2
+        while (current.length && depth < 100) {
+          if (current.is("h2")) break;
+          
+          if (current.is("p")) {
+            const text = current.text().trim();
+            if (text.length > 10) sectionText += text + " ";
+          } else if (current.is("ul, ol")) {
+            current.find("li").each((j, li) => {
+              const liText = $(li).text().trim();
+              if (liText.length > 10) sectionText += liText + " ";
+            });
+          } else if (current.is("h3, h4")) {
+            const subHeading = current.text().trim();
+            if (subHeading.length > 5) sectionText += subHeading + ". ";
+            let subNext = current.next();
+            let subDepth = 0;
+            while (subNext.length && !subNext.is("h2, h3") && subDepth < 20) {
+              if (subNext.is("p")) {
+                const text = subNext.text().trim();
+                if (text.length > 10) sectionText += text + " ";
+              }
+              subNext = subNext.next();
+              subDepth++;
             }
+          } else if (current.is("div.post__yellow, div.post__green, div.post__blue")) {
+            const text = current.text().trim();
+            if (text.length > 10) sectionText += text + " ";
           }
           
-          if (next.is("p, li, div.content, div.entry-content")) {
-            const text = next.text().trim();
-            if (text.length > 20) {
-              sectionText += " " + text;
-            }
-          }
-          
-          next = next.next();
+          current = current.next();
           depth++;
         }
         
-        if (sectionText.length > 50) {
-          foodText += sectionText + " ";
+        if (sectionText.length > 100) {
+          foodText = sectionText;
+          return false;
         }
       }
     });
