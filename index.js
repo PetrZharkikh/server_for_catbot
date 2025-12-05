@@ -344,70 +344,58 @@ function extractSectionByKeywords(source, keywords) {
 async function searchKoshkiWikiBreed(breed) {
   // Нормализуем название породы для URL
   const normalizeBreed = (name) => {
-    // Маппинг популярных пород на их URL на сайте (формат: категория/название.html)
-    const breedMap = {
-      "персидская": { url: "persidskaya", category: "dlinnoshyorstnye" },
-      "британская": { url: "britanskaya-korotkosherstnaya", category: "korotkoshyorstnye" },
-      "мейн-кун": { url: "mejn-kun", category: "poludlinnoshyorstnye" },
-      "сиамская": { url: "siamskaya", category: "orientalnye" },
-      "шотландская": { url: "shotlandskaya-vislouxaya", category: "korotkoshyorstnye" },
-      "сфинкс": { url: "sphinx", category: "lysye" },
-      "бенгальская": { url: "bengalskaya", category: "korotkoshyorstnye" },
-      "абиссинская": { url: "abissinskaya", category: "korotkoshyorstnye" },
-      "русская голубая": { url: "russkaya-golubaya", category: "korotkoshyorstnye" },
-      "норвежская лесная": { url: "norvezhskaya-lesnaya", category: "poludlinnoshyorstnye" }
-    };
-
-    const lower = name.toLowerCase().trim();
-    if (breedMap[lower]) {
-      return breedMap[lower];
-    }
-
-    // Если нет в маппинге, возвращаем нормализованную строку
-    return {
-      url: name
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^а-яёa-z0-9-]/g, "")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, ""),
-      category: null
-    };
+    return name
+      .toLowerCase()
+      .trim()
+      // Убираем слово "кошка" если есть
+      .replace(/\s+кошк[аиуеы]?\s*/gi, "")
+      .replace(/\s+кот[ауеы]?\s*/gi, "")
+      // Заменяем пробелы на дефисы
+      .replace(/\s+/g, "-")
+      // Убираем специальные символы, оставляем только буквы, цифры и дефисы
+      .replace(/[^а-яёa-z0-9-]/g, "")
+      // Убираем множественные дефисы
+      .replace(/-+/g, "-")
+      // Убираем дефисы в начале и конце
+      .replace(/^-|-$/g, "");
   };
 
   const normalized = normalizeBreed(breed);
   
-  // Если есть маппинг с категорией, используем его
-  let possibleUrls = [];
-  if (normalized.category) {
-    possibleUrls.push(`https://koshkiwiki.ru/porody/${normalized.category}/${normalized.url}.html`);
-  } else {
-    // Категории пород на сайте
-    const categories = [
-      "dlinnoshyorstnye",      // Длинношёрстные
-      "poludlinnoshyorstnye",  // Полудлинношёрстные
-      "korotkoshyorstnye",     // Короткошёрстные
-      "lysye",                 // Лысые
-      "orientalnye"            // Ориентальные
-    ];
-    
-    possibleUrls = [
-      // Попробуем в разных категориях
-      ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized.url}.html`),
-      ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized.url}-koshka.html`),
-      // Старые форматы
-      `https://koshkiwiki.ru/porody-koshek/${normalized.url}`,
-      `https://koshkiwiki.ru/porody-koshek/${normalized.url}-koshka`,
-      `https://koshkiwiki.ru/porody/${normalized.url}`,
-      `https://koshkiwiki.ru/porody/${normalized.url}-koshka`
-    ];
+  if (!normalized || normalized.length < 2) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki: Invalid breed name: "${breed}"`);
+    }
+    return null;
   }
+
+  // Категории пород на сайте - пробуем все категории автоматически
+  const categories = [
+    "dlinnoshyorstnye",      // Длинношёрстные
+    "poludlinnoshyorstnye",  // Полудлинношёрстные
+    "korotkoshyorstnye",     // Короткошёрстные
+    "lysye",                 // Лысые
+    "orientalnye"            // Ориентальные
+  ];
+  
+  // Формируем список возможных URL в порядке приоритета
+  // Пробуем все варианты для любой породы из Dialogflow
+  const possibleUrls = [
+    // Сначала пробуем с категориями (самый вероятный формат на сайте)
+    ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized}.html`),
+    ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized}-koshka.html`),
+    // Потом без категорий (старые форматы)
+    `https://koshkiwiki.ru/porody-koshek/${normalized}.html`,
+    `https://koshkiwiki.ru/porody-koshek/${normalized}-koshka.html`,
+    `https://koshkiwiki.ru/porody/${normalized}.html`,
+    `https://koshkiwiki.ru/porody/${normalized}-koshka.html`
+  ];
 
   for (const url of possibleUrls) {
     try {
       const response = await axios.get(url, {
         headers: { "User-Agent": USER_AGENT },
-        timeout: 5000
+        timeout: 15000 // Увеличиваем таймаут для медленных запросов
       });
       
       if (response.status === 200) {
@@ -875,13 +863,13 @@ app.post("/webhook", async (req, res) => {
     // Уход
     if (intent === "AskCareInfo") {
       if (!breed) {
-        return res.json({ fulfillmentText: "Укажите породу." });
+        return res.json({ fulfillmentText: "Укажите породу кошки." });
       }
 
-      const care = await getCareInfo(breed);
-      if (!care) {
+      try {
+        const care = await getCareInfo(breed);
         const response = {
-          fulfillmentText: "В статье не удалось найти текст, связанный с уходом или содержанием."
+          fulfillmentText: care || `К сожалению, я не смог найти подробную информацию об уходе за породой "${breed}". Попробуйте уточнить название породы или задать вопрос о другой породе.`
         };
         
         const breedContext = createBreedContext(req, breed);
@@ -890,30 +878,24 @@ app.post("/webhook", async (req, res) => {
         }
         
         return res.json(response);
+      } catch (err) {
+        console.error("Error in AskCareInfo:", err);
+        return res.json({
+          fulfillmentText: `Произошла ошибка при поиске информации об уходе за породой "${breed}". Попробуйте позже.`
+        });
       }
-
-      const response = {
-        fulfillmentText: care
-      };
-      
-      const breedContext = createBreedContext(req, breed);
-      if (breedContext) {
-        response.outputContexts = [breedContext];
-      }
-
-      return res.json(response);
     }
 
     // Питание
     if (intent === "AskFoodInfo") {
       if (!breed) {
-        return res.json({ fulfillmentText: "Укажите породу." });
+        return res.json({ fulfillmentText: "Укажите породу кошки." });
       }
 
-      const food = await getFoodInfo(breed);
-      if (!food) {
+      try {
+        const food = await getFoodInfo(breed);
         const response = {
-          fulfillmentText: "В статье не удалось найти текст, связанный с питанием или кормлением."
+          fulfillmentText: food || `К сожалению, я не смог найти подробную информацию о питании для породы "${breed}". Попробуйте уточнить название породы или задать вопрос о другой породе.`
         };
         
         const breedContext = createBreedContext(req, breed);
@@ -922,18 +904,12 @@ app.post("/webhook", async (req, res) => {
         }
         
         return res.json(response);
+      } catch (err) {
+        console.error("Error in AskFoodInfo:", err);
+        return res.json({
+          fulfillmentText: `Произошла ошибка при поиске информации о питании для породы "${breed}". Попробуйте позже.`
+        });
       }
-
-      const response = {
-        fulfillmentText: food
-      };
-      
-      const breedContext = createBreedContext(req, breed);
-      if (breedContext) {
-        response.outputContexts = [breedContext];
-      }
-
-      return res.json(response);
     }
 
     // По умолчанию
