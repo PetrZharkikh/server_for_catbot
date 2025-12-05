@@ -825,9 +825,14 @@ function createBreedContext(req, breed) {
 // ----------------------------------------
 // Webhook для Dialogflow
 app.post("/webhook", async (req, res) => {
-  // Логирование для отладки (можно отключить в продакшене)
+  // Всегда логируем запросы для отладки
+  console.log("=== Dialogflow Webhook Request ===");
+  console.log("Intent:", req.body.queryResult?.intent?.displayName);
+  console.log("Breed:", getBreed(req));
+  console.log("Session:", req.body.session);
+  
   if (process.env.DEBUG === 'true') {
-    console.log("Dialogflow request:", JSON.stringify(req.body, null, 2));
+    console.log("Full request:", JSON.stringify(req.body, null, 2));
   }
 
   const qr = req.body.queryResult || {};
@@ -835,6 +840,7 @@ app.post("/webhook", async (req, res) => {
   const session = req.body.session;
   const breed = getBreed(req);
 
+  // Убеждаемся, что всегда возвращаем ответ
   try {
     // Описание породы
     if (intent === "AskBreedInfo") {
@@ -912,14 +918,19 @@ app.post("/webhook", async (req, res) => {
       }
     }
 
-    // По умолчанию
+    // По умолчанию - если интент не распознан
+    console.log("Unknown intent:", intent);
     return res.json({
-      fulfillmentText: "Я отвечаю на вопросы об описании породы, уходе и питании."
+      fulfillmentText: "Я отвечаю на вопросы об описании породы, уходе и питании. Укажите породу кошки."
     });
   } catch (err) {
-    console.error("ERROR:", err);
-    return res.json({
-      fulfillmentText: "Ошибка обработки данных."
+    console.error("=== WEBHOOK ERROR ===");
+    console.error("Error:", err);
+    console.error("Stack:", err.stack);
+    
+    // Всегда возвращаем ответ, даже при ошибке
+    return res.status(200).json({
+      fulfillmentText: "Произошла ошибка при обработке запроса. Попробуйте позже или уточните вопрос."
     });
   }
 });
