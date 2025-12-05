@@ -10,24 +10,50 @@ const USER_AGENT = "CatBot/1.0 (https://server-for-catbot.onrender.com)";
 // Получаем породу из параметров или контекстов
 function getBreed(req) {
   const qr = req.body.queryResult || {};
-  if (qr.parameters?.breed) return qr.parameters.breed;
-
-  for (const ctx of qr.outputContexts || []) {
-    if (ctx.parameters?.breed) return ctx.parameters.breed;
+  
+  // Сначала проверяем параметры запроса (Dialogflow использует catbreed)
+  if (qr.parameters?.catbreed) {
+    return qr.parameters.catbreed;
   }
+  
+  // Также проверяем breed на случай, если используется старое имя
+  if (qr.parameters?.breed) {
+    return qr.parameters.breed;
+  }
+
+  // Проверяем контексты из queryResult
+  for (const ctx of qr.outputContexts || []) {
+    if (ctx.parameters?.catbreed) {
+      return ctx.parameters.catbreed;
+    }
+    if (ctx.parameters?.breed) {
+      return ctx.parameters.breed;
+    }
+  }
+
+  // Проверяем контексты из корня запроса (Dialogflow может отправлять их там)
+  for (const ctx of req.body.outputContexts || []) {
+    if (ctx.parameters?.catbreed) {
+      return ctx.parameters.catbreed;
+    }
+    if (ctx.parameters?.breed) {
+      return ctx.parameters.breed;
+    }
+  }
+
   return null;
 }
 
 // ----------------------------------------
 // Нормализация и обрезка текста: до N предложений / символов
-function cleanSummary(text, maxSentences = 3, maxChars = 600) {
+function cleanSummary(text, maxSentences = 8, maxChars = 1500) {
   if (!text) return "";
 
   // убираем лишние пробелы/переносы
   text = text.replace(/\s+/g, " ").trim();
 
   // режем на предложения
-  let sentences = text.split(/(?<=[.!?])\s+/);
+  let sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
 
   // берём первые maxSentences
   let result = sentences.slice(0, maxSentences).join(" ");
@@ -36,6 +62,13 @@ function cleanSummary(text, maxSentences = 3, maxChars = 600) {
   if (result.length > maxChars) {
     const cut = result.lastIndexOf(" ", maxChars);
     result = result.slice(0, cut > 0 ? cut : maxChars).trim();
+    // Убедимся, что не обрываем на середине предложения
+    if (!/[.!?]$/.test(result)) {
+      const lastSentence = result.split(/(?<=[.!?])\s+/).slice(-1)[0];
+      if (lastSentence.length < 20) {
+        result = result.slice(0, result.lastIndexOf(".") + 1).trim();
+      }
+    }
   }
 
   // убираем дубли знаков препинания
@@ -52,26 +85,41 @@ function cleanSummary(text, maxSentences = 3, maxChars = 600) {
 // ----------------------------------------
 // Поиск статьи породы в Википедии
 async function searchBreedArticle(breed) {
-  const query = breed + " кошка";
+  // Пробуем разные варианты запросов
+  const queries = [
+    breed + " кошка",
+    "порода кошек " + breed,
+    breed,
+    breed + " (порода кошек)"
+  ];
 
-  const url =
-    "https://ru.wikipedia.org/w/api.php" +
-    `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(
-      query
-    )}`;
+  for (const query of queries) {
+    const url =
+      "https://ru.wikipedia.org/w/api.php" +
+      `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(
+        query
+      )}&srlimit=10`;
 
-  const r = await axios.get(url, {
-    headers: { "User-Agent": USER_AGENT }
-  });
+    try {
+      const r = await axios.get(url, {
+        headers: { "User-Agent": USER_AGENT }
+      });
 
-  const results = r.data?.query?.search || [];
-  if (!results.length) return null;
+      const results = r.data?.query?.search || [];
+      if (!results.length) continue;
 
-  // пытаемся найти что-то явно про кошек
-  const match =
-    results.find(x => /кошка|кот|порода/i.test(x.title)) || results[0];
+      // пытаемся найти что-то явно про кошек
+      const match =
+        results.find(x => /кошка|кот|порода/i.test(x.title)) || results[0];
 
-  return match.title;
+      if (match) return match.title;
+    } catch (err) {
+      console.error(`Search error for "${query}":`, err.message);
+      continue;
+    }
+  }
+
+  return null;
 }
 
 // ----------------------------------------
@@ -80,15 +128,39 @@ async function getBreedSummary(breed) {
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
-  const url =
-    "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
-    encodeURIComponent(title);
+  try {
+    // Пробуем получить расширенное описание через summary API
+    const summaryUrl =
+      "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
+      encodeURIComponent(title);
 
-  const r = await axios.get(url, {
-    headers: { "User-Agent": USER_AGENT }
-  });
+    const summaryR = await axios.get(summaryUrl, {
+      headers: { "User-Agent": USER_AGENT }
+    });
 
-  return cleanSummary(r.data?.extract || "", 3, 600);
+    let extract = summaryR.data?.extract || "";
+
+    // Очищаем extract от вики-разметки
+    extract = stripWikiMarkup(extract);
+
+    // Если extract короткий, попробуем получить полный текст статьи
+    if (extract.length < 300) {
+      const source = await getArticleSource(title);
+      if (source) {
+        const stripped = stripWikiMarkup(source);
+        // Берём первые абзацы из начала статьи (обычно там описание)
+        const paragraphs = stripped.split(/\n\n+/).filter(p => p.trim().length > 50);
+        if (paragraphs.length > 0) {
+          extract = paragraphs.slice(0, 3).join(" ");
+        }
+      }
+    }
+
+    return cleanSummary(extract, 8, 1500);
+  } catch (err) {
+    console.error("Error getting summary:", err.message);
+    return null;
+  }
 }
 
 // ----------------------------------------
@@ -107,27 +179,76 @@ async function getArticleSource(title) {
 }
 
 // ----------------------------------------
-// Удаляем большую часть вики-разметки (очень грубо, но ок для извлечения фраз)
+// Удаляем большую часть вики-разметки (улучшенная версия)
 function stripWikiMarkup(source) {
   if (!source) return "";
 
   let text = source;
 
-  // убираем шаблоны {{...}}
-  text = text.replace(/\{\{[^}]*\}\}/g, " ");
+  // убираем вложенные шаблоны {{...}} (рекурсивно)
+  let prevText = "";
+  while (text !== prevText) {
+    prevText = text;
+    text = text.replace(/\{\{[^{}]*\}\}/g, " ");
+  }
 
   // убираем ссылки [http://..] и [..]
   text = text.replace(/\[https?:[^\]]+\]/g, " ");
+  
+  // Обрабатываем внутренние ссылки википедии [[текст|отображаемый текст]] -> отображаемый текст
+  text = text.replace(/\[\[([^\]]+)\|([^\]]+)\]\]/g, "$2");
+  // Обрабатываем простые ссылки [[текст]] -> текст
+  text = text.replace(/\[\[([^\]]+)\]\]/g, "$1");
+  
+  // Обрабатываем паттерны вида "Текст|текст" (остатки ссылок без скобок)
+  text = text.replace(/([А-ЯЁ][а-яё]+)\|([а-яё]+)/g, "$2");
+  
   text = text.replace(/\[[^\]]+\]/g, " ");
 
-  // убираем <ref>...</ref>
-  text = text.replace(/<ref[^>]*>.*?<\/ref>/gi, " ");
+  // убираем <ref>...</ref> (включая многострочные)
+  text = text.replace(/<ref[^>]*>.*?<\/ref>/gis, " ");
 
   // убираем html-теги
   text = text.replace(/<[^>]+>/g, " ");
 
   // убираем заголовки == ... ==
-  text = text.replace(/^==+.*?==+$/gm, " ");
+  text = text.replace(/^==+\s*.*?\s*==+$/gm, " ");
+
+  // убираем списки * и #
+  text = text.replace(/^[\*\#]+\s*/gm, " ");
+
+  // убираем таблицы {| ... |}
+  text = text.replace(/\{\|[\s\S]*?\|\}/g, " ");
+
+  // убираем категории [[Категория:...]]
+  text = text.replace(/\[\[Категория:[^\]]+\]\]/gi, " ");
+
+  // убираем файлы [[Файл:...]] и паттерны "Файл:...|мини|"
+  text = text.replace(/\[\[Файл:[^\]]+\]\]/gi, " ");
+  text = text.replace(/Файл:[^|]+\|[^|]+\|/gi, " ");
+  text = text.replace(/Файл:[^|]+\|/gi, " ");
+  text = text.replace(/Файл:[^\s]+/gi, " ");
+
+  // убираем паттерны вида "текст|текст|текст" (остатки вики-разметки)
+  text = text.replace(/[А-Яа-яЁёA-Za-z0-9\s]+\|[А-Яа-яЁёA-Za-z0-9\s]+\|[А-Яа-яЁёA-Za-z0-9\s]+/g, (match) => {
+    // Если это похоже на вики-разметку (много разделителей), убираем
+    if ((match.match(/\|/g) || []).length >= 2) {
+      // Берем последнюю часть после последнего |
+      const parts = match.split('|');
+      return parts[parts.length - 1] || " ";
+    }
+    return match;
+  });
+
+  // убираем курсив '' и жирный '''
+  text = text.replace(/'''(.+?)'''/g, "$1");
+  text = text.replace(/''(.+?)''/g, "$1");
+
+  // убираем остатки вики-разметки вида |мини|, |thumb| и т.д.
+  text = text.replace(/\|[а-яёa-z]+\|/gi, " ");
+
+  // убираем одиночные вертикальные черты
+  text = text.replace(/\s+\|\s+/g, " ");
 
   // сжимаем пробелы
   text = text.replace(/\s+/g, " ");
@@ -143,20 +264,28 @@ function extractSectionByHeading(source, keywords) {
   const lines = source.replace(/\r/g, "").split("\n");
   let capturing = false;
   let buffer = [];
+  let sectionLevel = 0;
 
   const lower = s => s.toLowerCase();
 
   for (let line of lines) {
     const trimmed = line.trim();
-    const headerMatch = trimmed.match(/^==+\s*(.+?)\s*==+$/);
+    const headerMatch = trimmed.match(/^(==+)\s*(.+?)\s*==+$/);
 
     if (headerMatch) {
-      const h = lower(headerMatch[1]);
+      const level = headerMatch[1].length;
+      const h = lower(headerMatch[2]);
+
       if (keywords.some(k => h.includes(k))) {
         capturing = true;
+        sectionLevel = level;
         continue;
       }
-      if (capturing) break;
+
+      // Если встретили заголовок того же или более высокого уровня - заканчиваем
+      if (capturing && level <= sectionLevel) {
+        break;
+      }
     }
 
     if (capturing) {
@@ -168,7 +297,7 @@ function extractSectionByHeading(source, keywords) {
 
   const raw = buffer.join(" ");
   const stripped = stripWikiMarkup(raw);
-  return cleanSummary(stripped, 3, 700);
+  return cleanSummary(stripped, 6, 1200);
 }
 
 // ----------------------------------------
@@ -179,17 +308,34 @@ function extractSectionByKeywords(source, keywords) {
   const stripped = stripWikiMarkup(source);
   if (!stripped) return null;
 
-  const sentences = stripped.split(/(?<=[.!?])\s+/);
+  // Разбиваем на предложения, но сохраняем контекст
+  const sentences = stripped.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 15);
   const lowerKeywords = keywords.map(k => k.toLowerCase());
 
-  const matches = sentences.filter(s =>
-    lowerKeywords.some(k => s.toLowerCase().includes(k))
-  );
+  // Находим предложения с ключевыми словами и их соседей для контекста
+  const matches = [];
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i].toLowerCase();
+    if (lowerKeywords.some(k => sentence.includes(k))) {
+      // Добавляем предыдущее предложение для контекста
+      if (i > 0 && !matches.includes(sentences[i - 1])) {
+        matches.push(sentences[i - 1]);
+      }
+      matches.push(sentences[i]);
+      // Добавляем следующее предложение для контекста
+      if (i < sentences.length - 1 && !matches.includes(sentences[i + 1])) {
+        matches.push(sentences[i + 1]);
+      }
+    }
+  }
 
   if (!matches.length) return null;
 
-  const joined = matches.slice(0, 3).join(" ");
-  return cleanSummary(joined, 3, 700);
+  // Убираем дубликаты, сохраняя порядок
+  const uniqueMatches = [...new Set(matches)];
+
+  const joined = uniqueMatches.slice(0, 8).join(" ");
+  return cleanSummary(joined, 6, 1200);
 }
 
 // ----------------------------------------
@@ -201,27 +347,61 @@ async function getCareInfo(breed) {
   const source = await getArticleSource(title);
   if (!source) return null;
 
-  // 1) пробуем по заголовкам
+  // 1) пробуем по заголовкам (расширенный список)
   let section = extractSectionByHeading(source, [
     "уход",
     "содержание",
     "груминг",
     "здоров",
+    "здоровье",
+    "болезн",
+    "характер",
+    "особенности",
+    "уход и содержание",
+    "содержание и уход",
     "health",
-    "care"
+    "care",
+    "grooming",
+    "maintenance"
   ]);
 
-  // 2) если не нашли — ищем по ключевым словам во всём тексте
+  // 2) если не нашли — ищем по ключевым словам во всём тексте (расширенный список)
   if (!section) {
     section = extractSectionByKeywords(source, [
       "уход",
       "содержание",
       "груминг",
+      "расчёсывать",
+      "купать",
+      "чистить",
       "здоров",
       "болезн",
+      "заболеван",
+      "шерсть",
+      "вычёсывать",
+      "ухаживать",
       "health",
-      "care"
+      "care",
+      "grooming",
+      "brush",
+      "bath"
     ]);
+  }
+
+  // 3) Если всё ещё не нашли, ищем в общих разделах
+  if (!section) {
+    // Пробуем найти разделы "Характер" или "Особенности", там часто есть информация об уходе
+    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание"]);
+    if (charSection) {
+      const charStripped = stripWikiMarkup(charSection);
+      const sentences = charStripped.split(/(?<=[.!?])\s+/);
+      const careSentences = sentences.filter(s => 
+        /уход|содержание|груминг|расчёс|купа|чист/i.test(s)
+      );
+      if (careSentences.length > 0) {
+        section = cleanSummary(careSentences.join(" "), 5, 1000);
+      }
+    }
   }
 
   return section;
@@ -236,33 +416,109 @@ async function getFoodInfo(breed) {
   const source = await getArticleSource(title);
   if (!source) return null;
 
+  // 1) пробуем по заголовкам (расширенный список)
   let section = extractSectionByHeading(source, [
     "питание",
     "корм",
     "кормление",
     "рацион",
+    "питание и кормление",
+    "кормление и питание",
     "diet",
-    "food"
+    "food",
+    "feeding",
+    "nutrition"
   ]);
 
+  // 2) если не нашли — ищем по ключевым словам во всём тексте (расширенный список)
   if (!section) {
     section = extractSectionByKeywords(source, [
       "питание",
       "корм",
       "кормление",
       "рацион",
+      "кормить",
+      "еда",
+      "питаться",
+      "сухой корм",
+      "влажный корм",
+      "натуральный",
       "diet",
-      "food"
+      "food",
+      "feeding",
+      "nutrition",
+      "feed"
     ]);
+  }
+
+  // 3) Если всё ещё не нашли, ищем в общих разделах
+  if (!section) {
+    // Пробуем найти разделы "Характер" или "Особенности", там иногда есть информация о питании
+    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание", "здоровье"]);
+    if (charSection) {
+      const charStripped = stripWikiMarkup(charSection);
+      const sentences = charStripped.split(/(?<=[.!?])\s+/);
+      const foodSentences = sentences.filter(s => 
+        /питание|корм|кормление|рацион|еда/i.test(s)
+      );
+      if (foodSentences.length > 0) {
+        section = cleanSummary(foodSentences.join(" "), 5, 1000);
+      }
+    }
   }
 
   return section;
 }
 
 // ----------------------------------------
+// Создание или обновление контекста для сохранения породы
+function createBreedContext(req, breed) {
+  const qr = req.body.queryResult || {};
+  const session = req.body.session;
+  
+  // Если есть существующий контекст, используем его
+  const existingContext = (qr.outputContexts || []).find(ctx => 
+    ctx.name?.includes('breed-context') || ctx.name?.includes('breed') || ctx.name?.includes('catbreed')
+  );
+  
+  if (existingContext && session) {
+    return {
+      name: existingContext.name,
+      lifespanCount: 5, // Контекст будет активен 5 оборотов диалога
+      parameters: {
+        ...existingContext.parameters,
+        catbreed: breed
+      }
+    };
+  }
+  
+  // Создаём новый контекст
+  if (session) {
+    // Формат: projects/PROJECT_ID/agent/sessions/SESSION_ID/contexts/CONTEXT_NAME
+    const contextName = `${session}/contexts/catbreed-context`;
+    return {
+      name: contextName,
+      lifespanCount: 5,
+      parameters: {
+        catbreed: breed
+      }
+    };
+  }
+  
+  return null;
+}
+
+// ----------------------------------------
 // Webhook для Dialogflow
 app.post("/webhook", async (req, res) => {
-  const intent = req.body.queryResult?.intent?.displayName;
+  // Логирование для отладки (можно отключить в продакшене)
+  if (process.env.DEBUG === 'true') {
+    console.log("Dialogflow request:", JSON.stringify(req.body, null, 2));
+  }
+
+  const qr = req.body.queryResult || {};
+  const intent = qr.intent?.displayName;
+  const session = req.body.session;
   const breed = getBreed(req);
 
   try {
@@ -277,7 +533,17 @@ app.post("/webhook", async (req, res) => {
         return res.json({ fulfillmentText: "Информация не найдена." });
       }
 
-      return res.json({ fulfillmentText: summary });
+      // Сохраняем породу в контексте для следующих вопросов
+      const response = {
+        fulfillmentText: summary
+      };
+      
+      const breedContext = createBreedContext(req, breed);
+      if (breedContext) {
+        response.outputContexts = [breedContext];
+      }
+
+      return res.json(response);
     }
 
     // Уход
@@ -288,13 +554,28 @@ app.post("/webhook", async (req, res) => {
 
       const care = await getCareInfo(breed);
       if (!care) {
-        return res.json({
-          fulfillmentText:
-            "В статье не удалось найти текст, связанный с уходом или содержанием."
-        });
+        const response = {
+          fulfillmentText: "В статье не удалось найти текст, связанный с уходом или содержанием."
+        };
+        
+        const breedContext = createBreedContext(req, breed);
+        if (breedContext) {
+          response.outputContexts = [breedContext];
+        }
+        
+        return res.json(response);
       }
 
-      return res.json({ fulfillmentText: care });
+      const response = {
+        fulfillmentText: care
+      };
+      
+      const breedContext = createBreedContext(req, breed);
+      if (breedContext) {
+        response.outputContexts = [breedContext];
+      }
+
+      return res.json(response);
     }
 
     // Питание
@@ -305,19 +586,33 @@ app.post("/webhook", async (req, res) => {
 
       const food = await getFoodInfo(breed);
       if (!food) {
-        return res.json({
-          fulfillmentText:
-            "В статье не удалось найти текст, связанный с питанием или кормлением."
-        });
+        const response = {
+          fulfillmentText: "В статье не удалось найти текст, связанный с питанием или кормлением."
+        };
+        
+        const breedContext = createBreedContext(req, breed);
+        if (breedContext) {
+          response.outputContexts = [breedContext];
+        }
+        
+        return res.json(response);
       }
 
-      return res.json({ fulfillmentText: food });
+      const response = {
+        fulfillmentText: food
+      };
+      
+      const breedContext = createBreedContext(req, breed);
+      if (breedContext) {
+        response.outputContexts = [breedContext];
+      }
+
+      return res.json(response);
     }
 
     // По умолчанию
     return res.json({
-      fulfillmentText:
-        "Я отвечаю на вопросы об описании породы, уходе и питании."
+      fulfillmentText: "Я отвечаю на вопросы об описании породы, уходе и питании."
     });
   } catch (err) {
     console.error("ERROR:", err);
