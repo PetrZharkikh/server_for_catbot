@@ -342,22 +342,63 @@ function extractSectionByKeywords(source, keywords) {
 // ----------------------------------------
 // Поиск страницы породы на koshkiwiki.ru
 async function searchKoshkiWikiBreed(breed) {
-  // Нормализуем название породы для URL
+  // Нормализуем название породы для URL (транслитерация кириллицы)
   const normalizeBreed = (name) => {
-    return name
+    // Таблица транслитерации кириллицы в латиницу (как на koshkiwiki.ru)
+    // Сайт использует стандартную транслитерацию
+    const translitMap = {
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    
+    // Специальные случаи транслитерации (как на сайте)
+    // "й" в середине слова -> "j", в конце -> "y"
+    const specialCases = {
+      'мейн': 'mejn',
+      'персидск': 'persidsk',
+      'британск': 'britansk',
+      'сиамск': 'siamsk',
+      'ориентал': 'oriental'
+    };
+
+    let normalized = name
       .toLowerCase()
       .trim()
       // Убираем слово "кошка" если есть
       .replace(/\s+кошк[аиуеы]?\s*/gi, "")
-      .replace(/\s+кот[ауеы]?\s*/gi, "")
+      .replace(/\s+кот[ауеы]?\s*/gi, "");
+
+    // Проверяем специальные случаи
+    for (const [key, value] of Object.entries(specialCases)) {
+      if (normalized.includes(key)) {
+        normalized = normalized.replace(key, value);
+        break;
+      }
+    }
+
+    // Транслитерируем оставшуюся кириллицу в латиницу
+    normalized = normalized
+      .split('')
+      .map(char => {
+        // Если уже латиница или дефис - оставляем как есть
+        if (/[a-z0-9-]/.test(char)) return char;
+        // Транслитерируем кириллицу
+        return translitMap[char] || '';
+      })
+      .join('')
       // Заменяем пробелы на дефисы
       .replace(/\s+/g, "-")
       // Убираем специальные символы, оставляем только буквы, цифры и дефисы
-      .replace(/[^а-яёa-z0-9-]/g, "")
+      .replace(/[^a-z0-9-]/g, "")
       // Убираем множественные дефисы
       .replace(/-+/g, "-")
       // Убираем дефисы в начале и конце
       .replace(/^-|-$/g, "");
+
+    return normalized;
   };
 
   const normalized = normalizeBreed(breed);
@@ -444,43 +485,64 @@ async function getCareInfoFromKoshkiWiki(breed) {
     // Ищем раздел "Рекомендации по уходу" - стандартный раздел на всех страницах
     $("h2").each((i, elem) => {
       const heading = $(elem).text().trim();
-      const headingId = $(elem).find("span").attr("id") || "";
       
-      // Точное совпадение или по ID якоря
-      if (heading === "Рекомендации по уходу" || headingId === "i-6") {
+      // Ищем по точному тексту заголовка (ID может отличаться на разных страницах)
+      if (heading === "Рекомендации по уходу" || heading.includes("Рекомендации по уходу")) {
         
         let sectionText = "";
         let current = $(elem).next();
         let depth = 0;
         
         // Собираем весь контент до следующего h2
-        while (current.length && depth < 100) {
+        while (current.length && depth < 150) {
           if (current.is("h2")) break;
           
+          // Параграфы - используем .text() для извлечения только текста
           if (current.is("p")) {
             const text = current.text().trim();
-            if (text.length > 10) sectionText += text + " ";
-          } else if (current.is("ul, ol")) {
+            // Убираем текст из изображений и рекламы
+            if (text.length > 10 && !text.includes("Yandex.RTB") && !text.includes("data:image") && !text.includes("src=")) {
+              sectionText += text + " ";
+            }
+          } 
+          // Списки
+          else if (current.is("ul, ol")) {
             current.find("li").each((j, li) => {
               const liText = $(li).text().trim();
               if (liText.length > 10) sectionText += liText + " ";
             });
-          } else if (current.is("h3, h4")) {
+          } 
+          // Подзаголовки h3, h4 и их контент
+          else if (current.is("h3, h4")) {
             const subHeading = current.text().trim();
-            if (subHeading.length > 5) sectionText += subHeading + ". ";
+            if (subHeading.length > 5 && !subHeading.includes("id=")) {
+              sectionText += subHeading + ". ";
+            }
+            // Собираем контент после подзаголовка
             let subNext = current.next();
             let subDepth = 0;
-            while (subNext.length && !subNext.is("h2, h3") && subDepth < 20) {
+            while (subNext.length && !subNext.is("h2, h3") && subDepth < 30) {
               if (subNext.is("p")) {
                 const text = subNext.text().trim();
-                if (text.length > 10) sectionText += text + " ";
+                if (text.length > 10 && !text.includes("Yandex.RTB")) {
+                  sectionText += text + " ";
+                }
+              } else if (subNext.is("ul, ol")) {
+                subNext.find("li").each((j, li) => {
+                  const liText = $(li).text().trim();
+                  if (liText.length > 10) sectionText += liText + " ";
+                });
               }
               subNext = subNext.next();
               subDepth++;
             }
-          } else if (current.is("div.post__yellow, div.post__green, div.post__blue")) {
+          } 
+          // Специальные блоки с информацией
+          else if (current.is("div.post__yellow, div.post__green, div.post__blue, div.post__entry")) {
             const text = current.text().trim();
-            if (text.length > 10) sectionText += text + " ";
+            if (text.length > 20 && !text.includes("Yandex.RTB")) {
+              sectionText += text + " ";
+            }
           }
           
           current = current.next();
@@ -489,7 +551,14 @@ async function getCareInfoFromKoshkiWiki(breed) {
         
         if (sectionText.length > 100) {
           careText = sectionText;
-          return false;
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Extracted ${sectionText.length} chars of care info`);
+          }
+          return false; // Прерываем цикл, нашли нужный раздел
+        } else {
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Care section found but too short: ${sectionText.length} chars`);
+          }
         }
       }
     });
@@ -546,8 +615,8 @@ async function getFoodInfoFromKoshkiWiki(breed) {
         console.log(`Found h2: "${heading}", id: "${headingId}"`);
       }
       
-      // Точное совпадение "Организация питания" или по ID якоря i-12
-      if (heading === "Организация питания" || headingId === "i-12") {
+      // Ищем по точному тексту заголовка (ID может отличаться на разных страницах)
+      if (heading === "Организация питания" || heading.includes("Организация питания")) {
         if (process.env.DEBUG === 'true') {
           console.log(`Found food section!`);
         }
@@ -556,33 +625,55 @@ async function getFoodInfoFromKoshkiWiki(breed) {
         let depth = 0;
         
         // Собираем весь контент до следующего h2
-        while (current.length && depth < 100) {
+        while (current.length && depth < 150) {
           if (current.is("h2")) break;
           
+          // Параграфы
           if (current.is("p")) {
             const text = current.text().trim();
-            if (text.length > 10) sectionText += text + " ";
-          } else if (current.is("ul, ol")) {
+            // Убираем текст из изображений и рекламы
+            if (text.length > 10 && !text.includes("Yandex.RTB") && !text.includes("data:image")) {
+              sectionText += text + " ";
+            }
+          } 
+          // Списки
+          else if (current.is("ul, ol")) {
             current.find("li").each((j, li) => {
               const liText = $(li).text().trim();
               if (liText.length > 10) sectionText += liText + " ";
             });
-          } else if (current.is("h3, h4")) {
+          } 
+          // Подзаголовки h3, h4 и их контент
+          else if (current.is("h3, h4")) {
             const subHeading = current.text().trim();
-            if (subHeading.length > 5) sectionText += subHeading + ". ";
+            if (subHeading.length > 5 && !subHeading.includes("id=")) {
+              sectionText += subHeading + ". ";
+            }
+            // Собираем контент после подзаголовка
             let subNext = current.next();
             let subDepth = 0;
-            while (subNext.length && !subNext.is("h2, h3") && subDepth < 20) {
+            while (subNext.length && !subNext.is("h2, h3") && subDepth < 30) {
               if (subNext.is("p")) {
                 const text = subNext.text().trim();
-                if (text.length > 10) sectionText += text + " ";
+                if (text.length > 10 && !text.includes("Yandex.RTB")) {
+                  sectionText += text + " ";
+                }
+              } else if (subNext.is("ul, ol")) {
+                subNext.find("li").each((j, li) => {
+                  const liText = $(li).text().trim();
+                  if (liText.length > 10) sectionText += liText + " ";
+                });
               }
               subNext = subNext.next();
               subDepth++;
             }
-          } else if (current.is("div.post__yellow, div.post__green, div.post__blue")) {
+          } 
+          // Специальные блоки с информацией
+          else if (current.is("div.post__yellow, div.post__green, div.post__blue, div.post__entry")) {
             const text = current.text().trim();
-            if (text.length > 10) sectionText += text + " ";
+            if (text.length > 20 && !text.includes("Yandex.RTB")) {
+              sectionText += text + " ";
+            }
           }
           
           current = current.next();
@@ -591,7 +682,14 @@ async function getFoodInfoFromKoshkiWiki(breed) {
         
         if (sectionText.length > 100) {
           foodText = sectionText;
-          return false;
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Extracted ${sectionText.length} chars of food info`);
+          }
+          return false; // Прерываем цикл, нашли нужный раздел
+        } else {
+          if (process.env.DEBUG === 'true') {
+            console.log(`KoshkiWiki: Food section found but too short: ${sectionText.length} chars`);
+          }
         }
       }
     });
@@ -607,6 +705,15 @@ async function getFoodInfoFromKoshkiWiki(breed) {
     }
 
     if (foodText && foodText.length > 100) {
+      // Очищаем от HTML-тегов и лишних пробелов
+      foodText = foodText
+        .replace(/<[^>]+>/g, " ") // Убираем HTML-теги
+        .replace(/src="[^"]*"/g, "") // Убираем src атрибуты
+        .replace(/alt="[^"]*"/g, "") // Убираем alt атрибуты
+        .replace(/data-[^=]*="[^"]*"/g, "") // Убираем data-атрибуты
+        .replace(/\s+/g, " ") // Убираем множественные пробелы
+        .trim();
+      
       const cleaned = cleanSummary(foodText, 6, 1200);
       if (process.env.DEBUG === 'true') {
         console.log(`KoshkiWiki: Found food info for "${breed}" (${cleaned.length} chars)`);
