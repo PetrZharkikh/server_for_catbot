@@ -1,5 +1,6 @@
 const express = require("express");
 const axios = require("axios");
+const cheerio = require("cheerio");
 
 const app = express();
 app.use(express.json());
@@ -339,8 +340,260 @@ function extractSectionByKeywords(source, keywords) {
 }
 
 // ----------------------------------------
+// Поиск страницы породы на koshkiwiki.ru
+async function searchKoshkiWikiBreed(breed) {
+  // Нормализуем название породы для URL
+  const normalizeBreed = (name) => {
+    // Маппинг популярных пород на их URL на сайте (формат: категория/название.html)
+    const breedMap = {
+      "персидская": { url: "persidskaya", category: "dlinnoshyorstnye" },
+      "британская": { url: "britanskaya-korotkosherstnaya", category: "korotkoshyorstnye" },
+      "мейн-кун": { url: "mejn-kun", category: "poludlinnoshyorstnye" },
+      "сиамская": { url: "siamskaya", category: "orientalnye" },
+      "шотландская": { url: "shotlandskaya-vislouxaya", category: "korotkoshyorstnye" },
+      "сфинкс": { url: "sphinx", category: "lysye" },
+      "бенгальская": { url: "bengalskaya", category: "korotkoshyorstnye" },
+      "абиссинская": { url: "abissinskaya", category: "korotkoshyorstnye" },
+      "русская голубая": { url: "russkaya-golubaya", category: "korotkoshyorstnye" },
+      "норвежская лесная": { url: "norvezhskaya-lesnaya", category: "poludlinnoshyorstnye" }
+    };
+
+    const lower = name.toLowerCase().trim();
+    if (breedMap[lower]) {
+      return breedMap[lower];
+    }
+
+    // Если нет в маппинге, возвращаем нормализованную строку
+    return {
+      url: name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^а-яёa-z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, ""),
+      category: null
+    };
+  };
+
+  const normalized = normalizeBreed(breed);
+  
+  // Если есть маппинг с категорией, используем его
+  let possibleUrls = [];
+  if (normalized.category) {
+    possibleUrls.push(`https://koshkiwiki.ru/porody/${normalized.category}/${normalized.url}.html`);
+  } else {
+    // Категории пород на сайте
+    const categories = [
+      "dlinnoshyorstnye",      // Длинношёрстные
+      "poludlinnoshyorstnye",  // Полудлинношёрстные
+      "korotkoshyorstnye",     // Короткошёрстные
+      "lysye",                 // Лысые
+      "orientalnye"            // Ориентальные
+    ];
+    
+    possibleUrls = [
+      // Попробуем в разных категориях
+      ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized.url}.html`),
+      ...categories.map(cat => `https://koshkiwiki.ru/porody/${cat}/${normalized.url}-koshka.html`),
+      // Старые форматы
+      `https://koshkiwiki.ru/porody-koshek/${normalized.url}`,
+      `https://koshkiwiki.ru/porody-koshek/${normalized.url}-koshka`,
+      `https://koshkiwiki.ru/porody/${normalized.url}`,
+      `https://koshkiwiki.ru/porody/${normalized.url}-koshka`
+    ];
+  }
+
+  for (const url of possibleUrls) {
+    try {
+      const response = await axios.get(url, {
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 5000
+      });
+      
+      if (response.status === 200 && 
+          !response.data.includes("Запрашиваемая страница не найдена") &&
+          !response.data.includes("404") &&
+          response.data.length > 5000) { // Проверяем, что страница не пустая
+        return { url, html: response.data };
+      }
+    } catch (err) {
+      if (process.env.DEBUG === 'true') {
+        console.log(`Failed to fetch ${url}:`, err.message);
+      }
+      continue;
+    }
+  }
+
+  return null;
+}
+
+// ----------------------------------------
+// Извлечение информации об уходе с koshkiwiki.ru
+async function getCareInfoFromKoshkiWiki(breed) {
+  const result = await searchKoshkiWikiBreed(breed);
+  if (!result) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki: Page not found for breed "${breed}"`);
+    }
+    return null;
+  }
+
+  try {
+    const $ = cheerio.load(result.html);
+    let careText = "";
+
+    // Ищем разделы с заголовками об уходе (h2, h3, h4)
+    $("h2, h3, h4").each((i, elem) => {
+      const heading = $(elem).text().toLowerCase().trim();
+      if (/уход|содержание|груминг|здоровье|гигиена|забота|рекомендации по уходу/i.test(heading)) {
+        let sectionText = "";
+        let next = $(elem).next();
+        let depth = 0;
+        
+        // Собираем текст до следующего заголовка того же или более высокого уровня
+        while (next.length && depth < 50) {
+          if (next.is("h2, h3, h4")) {
+            const nextLevel = next.prop("tagName").match(/\d/)?.[0] || "2";
+            const currentLevel = $(elem).prop("tagName").match(/\d/)?.[0] || "2";
+            if (parseInt(nextLevel) <= parseInt(currentLevel)) {
+              break;
+            }
+          }
+          
+          if (next.is("p, li, div.content, div.entry-content")) {
+            const text = next.text().trim();
+            if (text.length > 20) {
+              sectionText += " " + text;
+            }
+          }
+          
+          next = next.next();
+          depth++;
+        }
+        
+        if (sectionText.length > 50) {
+          careText += sectionText + " ";
+        }
+      }
+    });
+
+    // Если не нашли по заголовкам, ищем по ключевым словам в параграфах
+    if (!careText || careText.length < 100) {
+      $("p, .content p, .entry-content p").each((i, elem) => {
+        const text = $(elem).text().trim();
+        if (text.length > 30 && /уход|содержание|груминг|расчёсывать|купать|чистить|шерсть|вычёсывать|заботиться/i.test(text)) {
+          careText += text + " ";
+        }
+      });
+    }
+
+    if (careText && careText.length > 100) {
+      const cleaned = cleanSummary(careText, 6, 1200);
+      if (process.env.DEBUG === 'true') {
+        console.log(`KoshkiWiki: Found care info for "${breed}" (${cleaned.length} chars)`);
+      }
+      return cleaned;
+    }
+  } catch (err) {
+    console.error("Error parsing koshkiwiki.ru:", err.message);
+  }
+
+  return null;
+}
+
+// ----------------------------------------
+// Извлечение информации о питании с koshkiwiki.ru
+async function getFoodInfoFromKoshkiWiki(breed) {
+  const result = await searchKoshkiWikiBreed(breed);
+  if (!result) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki: Page not found for breed "${breed}"`);
+    }
+    return null;
+  }
+
+  try {
+    const $ = cheerio.load(result.html);
+    let foodText = "";
+
+    // Ищем разделы с заголовками о питании (h2, h3, h4)
+    $("h2, h3, h4").each((i, elem) => {
+      const heading = $(elem).text().toLowerCase().trim();
+      if (/питание|корм|кормление|рацион|еда|организация питания/i.test(heading)) {
+        let sectionText = "";
+        let next = $(elem).next();
+        let depth = 0;
+        
+        // Собираем текст до следующего заголовка того же или более высокого уровня
+        while (next.length && depth < 50) {
+          if (next.is("h2, h3, h4")) {
+            const nextLevel = next.prop("tagName").match(/\d/)?.[0] || "2";
+            const currentLevel = $(elem).prop("tagName").match(/\d/)?.[0] || "2";
+            if (parseInt(nextLevel) <= parseInt(currentLevel)) {
+              break;
+            }
+          }
+          
+          if (next.is("p, li, div.content, div.entry-content")) {
+            const text = next.text().trim();
+            if (text.length > 20) {
+              sectionText += " " + text;
+            }
+          }
+          
+          next = next.next();
+          depth++;
+        }
+        
+        if (sectionText.length > 50) {
+          foodText += sectionText + " ";
+        }
+      }
+    });
+
+    // Если не нашли по заголовкам, ищем по ключевым словам в параграфах
+    if (!foodText || foodText.length < 100) {
+      $("p, .content p, .entry-content p").each((i, elem) => {
+        const text = $(elem).text().trim();
+        if (text.length > 30 && /питание|корм|кормление|рацион|еда|кормить|сухой корм|влажный корм|натурал/i.test(text)) {
+          foodText += text + " ";
+        }
+      });
+    }
+
+    if (foodText && foodText.length > 100) {
+      const cleaned = cleanSummary(foodText, 6, 1200);
+      if (process.env.DEBUG === 'true') {
+        console.log(`KoshkiWiki: Found food info for "${breed}" (${cleaned.length} chars)`);
+      }
+      return cleaned;
+    }
+  } catch (err) {
+    console.error("Error parsing koshkiwiki.ru:", err.message);
+  }
+
+  return null;
+}
+
+// ----------------------------------------
 // Уход
 async function getCareInfo(breed) {
+  // Сначала пробуем koshkiwiki.ru (более специализированный источник)
+  try {
+    let care = await getCareInfoFromKoshkiWiki(breed);
+    if (care && care.length > 200) {
+      if (process.env.DEBUG === 'true') {
+        console.log(`Using KoshkiWiki for care info: ${breed}`);
+      }
+      return care;
+    }
+  } catch (err) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki error for ${breed}:`, err.message);
+    }
+  }
+
+  // Fallback на Википедию
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
@@ -410,6 +663,22 @@ async function getCareInfo(breed) {
 // ----------------------------------------
 // Питание
 async function getFoodInfo(breed) {
+  // Сначала пробуем koshkiwiki.ru (более специализированный источник)
+  try {
+    let food = await getFoodInfoFromKoshkiWiki(breed);
+    if (food && food.length > 200) {
+      if (process.env.DEBUG === 'true') {
+        console.log(`Using KoshkiWiki for food info: ${breed}`);
+      }
+      return food;
+    }
+  } catch (err) {
+    if (process.env.DEBUG === 'true') {
+      console.log(`KoshkiWiki error for ${breed}:`, err.message);
+    }
+  }
+
+  // Fallback на Википедию
   const title = await searchBreedArticle(breed);
   if (!title) return null;
 
