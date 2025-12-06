@@ -86,36 +86,108 @@ function cleanSummary(text, maxSentences = 8, maxChars = 1500) {
 // ----------------------------------------
 // Поиск статьи породы в Википедии
 async function searchBreedArticle(breed) {
-  // Пробуем разные варианты запросов
+  // Нормализуем название породы для поиска
+  const normalizeForSearch = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      // Убираем описательные слова, которые могут мешать поиску
+      .replace(/\s+короткош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s+длиннош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s+полудлиннош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s+жесткошерстн[аяуюойые]+/gi, "")
+      .replace(/\s+короткошерстн[аяуюойые]+/gi, "")
+      .replace(/\s+длинношерстн[аяуюойые]+/gi, "")
+      .replace(/\s+кошк[аиуеы]?\s*/gi, "")
+      .replace(/\s+кот[ауеы]?\s*/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const normalized = normalizeForSearch(breed);
+  
+  // Пробуем разные варианты запросов (расширенный список)
   const queries = [
     breed + " кошка",
+    normalized + " кошка",
     "порода кошек " + breed,
+    "порода кошек " + normalized,
     breed,
-    breed + " (порода кошек)"
+    normalized,
+    breed + " (порода кошек)",
+    normalized + " (порода кошек)",
+    // Пробуем без дополнительных слов
+    breed.split(" ")[0] + " кошка", // Первое слово
+    normalized.split(" ")[0] + " кошка"
   ];
 
-  for (const query of queries) {
+  // Убираем дубликаты
+  const uniqueQueries = [...new Set(queries.filter(q => q && q.length > 2))];
+  
+  // Дополнительные варианты для редких пород
+  // Пробуем варианты с дефисами и без
+  const breedVariants = [
+    breed.replace(/\s+/g, "-"),
+    breed.replace(/\s+/g, ""),
+    breed.replace(/-/g, " "),
+    breed.replace(/\s+/g, "-").toLowerCase(),
+    breed.toLowerCase().replace(/\s+/g, "-")
+  ];
+  
+  for (const variant of breedVariants) {
+    if (variant !== breed && variant.length > 3) {
+      uniqueQueries.push(variant + " кошка");
+      uniqueQueries.push("порода кошек " + variant);
+      uniqueQueries.push(variant);
+    }
+  }
+
+  for (const query of uniqueQueries) {
     const url =
       "https://ru.wikipedia.org/w/api.php" +
       `?action=query&list=search&format=json&utf8=1&srsearch=${encodeURIComponent(
         query
-      )}&srlimit=10`;
+        )}&srlimit=15`;
 
     try {
       const r = await axios.get(url, {
-        headers: { "User-Agent": USER_AGENT }
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 10000
       });
 
       const results = r.data?.query?.search || [];
       if (!results.length) continue;
 
-      // пытаемся найти что-то явно про кошек
-      const match =
-        results.find(x => /кошка|кот|порода/i.test(x.title)) || results[0];
+      // Сначала пытаемся найти что-то явно про кошек
+      let match = results.find(x => /кошка|кот|порода|breed|cat/i.test(x.title));
+      
+      // Если не нашли, ищем по первому слову названия породы
+      if (!match) {
+        const firstWord = breed.split(" ")[0].toLowerCase();
+        match = results.find(x => 
+          x.title.toLowerCase().includes(firstWord) && 
+          (x.title.toLowerCase().includes("кош") || x.title.toLowerCase().includes("cat"))
+        );
+      }
+      
+      // Если всё ещё не нашли, берём первый результат, если он похож на название породы
+      if (!match && results.length > 0) {
+        const firstWord = breed.split(" ")[0].toLowerCase();
+        if (results[0].title.toLowerCase().includes(firstWord)) {
+          match = results[0];
+        }
+      }
+      
+      // Последний вариант - берём первый результат
+      if (!match && results.length > 0) {
+        match = results[0];
+      }
 
       if (match) return match.title;
     } catch (err) {
-      console.error(`Search error for "${query}":`, err.message);
+      if (process.env.DEBUG === 'true') {
+        console.error(`Search error for "${query}":`, err.message);
+      }
       continue;
     }
   }
@@ -132,12 +204,12 @@ async function getBreedSummary(breed) {
   try {
     // Пробуем получить расширенное описание через summary API
     const summaryUrl =
-      "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
-      encodeURIComponent(title);
+    "https://ru.wikipedia.org/api/rest_v1/page/summary/" +
+    encodeURIComponent(title);
 
     const summaryR = await axios.get(summaryUrl, {
-      headers: { "User-Agent": USER_AGENT }
-    });
+    headers: { "User-Agent": USER_AGENT }
+  });
 
     let extract = summaryR.data?.extract || "";
 
@@ -355,13 +427,15 @@ async function searchKoshkiWikiBreed(breed) {
     };
     
     // Специальные случаи транслитерации (как на сайте)
-    // "й" в середине слова -> "j", в конце -> "y"
+    // Некоторые породы имеют особую транслитерацию на сайте
     const specialCases = {
       'мейн': 'mejn',
       'персидск': 'persidsk',
       'британск': 'britansk',
       'сиамск': 'siamsk',
-      'ориентал': 'oriental'
+      'ориентал': 'oriental',
+      'регдолл': 'regdoll',
+      'регдол': 'regdoll'
     };
 
     let normalized = name
@@ -369,26 +443,74 @@ async function searchKoshkiWikiBreed(breed) {
       .trim()
       // Убираем слово "кошка" если есть
       .replace(/\s+кошк[аиуеы]?\s*/gi, "")
-      .replace(/\s+кот[ауеы]?\s*/gi, "");
+      .replace(/\s+кот[ауеы]?\s*/gi, "")
+      // Убираем дополнительные описательные слова, которые не нужны в URL
+      // ВАЖНО: удаляем слова целиком, включая окончания
+      .replace(/\s*короткош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s*длиннош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s*полудлиннош[ёе]рстн[аяуюойые]+/gi, "")
+      .replace(/\s*лыс[аяуюойые]+/gi, "")
+      .replace(/\s*ориентальн[аяуюойые]+/gi, "")
+      .replace(/\s*жесткошерстн[аяуюойые]+/gi, "")
+      .replace(/\s*короткошерстн[аяуюойые]+/gi, "")
+      .replace(/\s*длинношерстн[аяуюойые]+/gi, "")
+      .replace(/\s*классическ[аяуюойые]+/gi, "")
+      .replace(/\s*петербургск[аяуюойые]+/gi, "")
+      .replace(/\s*американск[аяуюойые]+/gi, "")
+      .replace(/\s*полосат[аяуюойые]+/gi, "")
+      .replace(/\s*дымчат[аяуюойые]+/gi, "")
+      // Убираем множественные пробелы после удаления слов
+      .replace(/\s+/g, " ")
+      .trim();
 
-    // Проверяем специальные случаи
-    for (const [key, value] of Object.entries(specialCases)) {
+    // Проверяем специальные случаи (сначала полные совпадения, потом частичные)
+    // Сортируем по длине ключа (от длинных к коротким), чтобы "регдолл" обрабатывался раньше "регдол"
+    const sortedCases = Object.entries(specialCases).sort((a, b) => b[0].length - a[0].length);
+    
+    for (const [key, value] of sortedCases) {
       if (normalized.includes(key)) {
+        // Заменяем ключ на значение
         normalized = normalized.replace(key, value);
+        // После замены убираем лишние пробелы
+        normalized = normalized.replace(/\s+/g, " ").trim();
+        // Если это полное совпадение (порода состоит только из этого слова), возвращаем сразу
+        if (normalized === value || normalized.startsWith(value + ' ') || normalized === value) {
+          // Оставляем как есть, но убираем остатки после специального случая
+          normalized = value;
+          break;
+        }
+        // Если после замены осталось только окончание "ая" или "aya", транслитерируем его и добавляем к value
+        const remaining = normalized.replace(value, '').trim();
+        if (remaining && remaining.length < 5) {
+          // Транслитерируем оставшуюся часть
+          const translitRemaining = remaining
+            .split('')
+            .map(char => {
+              if (/[a-z0-9-]/.test(char)) return char;
+              return translitMap[char] || '';
+            })
+            .join('');
+          normalized = value + translitRemaining;
+        }
         break;
       }
     }
 
-    // Транслитерируем оставшуюся кириллицу в латиницу
+    // Транслитерируем оставшуюся кириллицу в латиницу (только если не было полного совпадения)
+    if (!sortedCases.some(([key, value]) => normalized === value)) {
+      normalized = normalized
+        .split('')
+        .map(char => {
+          // Если уже латиница или дефис - оставляем как есть
+          if (/[a-z0-9-]/.test(char)) return char;
+          // Транслитерируем кириллицу
+          return translitMap[char] || '';
+        })
+        .join('');
+    }
+
+    // Финальная нормализация для всех случаев
     normalized = normalized
-      .split('')
-      .map(char => {
-        // Если уже латиница или дефис - оставляем как есть
-        if (/[a-z0-9-]/.test(char)) return char;
-        // Транслитерируем кириллицу
-        return translitMap[char] || '';
-      })
-      .join('')
       // Заменяем пробелы на дефисы
       .replace(/\s+/g, "-")
       // Убираем специальные символы, оставляем только буквы, цифры и дефисы
@@ -396,7 +518,12 @@ async function searchKoshkiWikiBreed(breed) {
       // Убираем множественные дефисы
       .replace(/-+/g, "-")
       // Убираем дефисы в начале и конце
-      .replace(/^-|-$/g, "");
+      .replace(/^-|-$/g, "")
+      // Убираем дублирование окончаний (например, "britanskayaya" -> "britanskaya")
+      .replace(/([a-z]+)aya(aya)+$/i, '$1aya')
+      .replace(/([a-z]+)aya(aya)+/i, '$1aya')
+      // Убираем дублирование "aya" в середине слова
+      .replace(/([a-z]+)aya-aya([a-z]*)/i, '$1aya$2');
 
     return normalized;
   };
@@ -441,11 +568,10 @@ async function searchKoshkiWikiBreed(breed) {
       
       if (response.status === 200) {
         const html = response.data;
-        // Проверяем, что это не страница ошибки и есть нужные разделы
+        // Проверяем, что это не страница ошибки
         if (!html.includes("Запрашиваемая страница не найдена") &&
             !html.includes('class="error404"') &&
-            html.length > 10000 && // Страница должна быть достаточно большой
-            (html.includes("Рекомендации по уходу") || html.includes('id="i-6"'))) { // Должен быть раздел об уходе
+            html.length > 10000) { // Страница должна быть достаточно большой
           if (process.env.DEBUG === 'true') {
             console.log(`KoshkiWiki: Found valid page at ${url} (${html.length} bytes)`);
           }
@@ -574,6 +700,18 @@ async function getCareInfoFromKoshkiWiki(breed) {
     }
 
     if (careText && careText.length > 100) {
+      // Очищаем от HTML-тегов и лишних пробелов
+      careText = careText
+        .replace(/<img[^>]*>/gi, " ") // Убираем img теги полностью
+        .replace(/<[^>]+>/g, " ") // Убираем остальные HTML-теги
+        .replace(/src="[^"]*"/g, "") // Убираем src атрибуты
+        .replace(/alt="[^"]*"/g, "") // Убираем alt атрибуты
+        .replace(/data-[^=]*="[^"]*"/g, "") // Убираем data-атрибуты
+        .replace(/srcset="[^"]*"/g, "") // Убираем srcset атрибуты
+        .replace(/sizes="[^"]*"/g, "") // Убираем sizes атрибуты
+        .replace(/\s+/g, " ") // Убираем множественные пробелы
+        .trim();
+      
       const cleaned = cleanSummary(careText, 6, 1200);
       if (process.env.DEBUG === 'true') {
         console.log(`KoshkiWiki: Found care info for "${breed}" (${cleaned.length} chars)`);
@@ -707,10 +845,13 @@ async function getFoodInfoFromKoshkiWiki(breed) {
     if (foodText && foodText.length > 100) {
       // Очищаем от HTML-тегов и лишних пробелов
       foodText = foodText
-        .replace(/<[^>]+>/g, " ") // Убираем HTML-теги
+        .replace(/<img[^>]*>/gi, " ") // Убираем img теги полностью
+        .replace(/<[^>]+>/g, " ") // Убираем остальные HTML-теги
         .replace(/src="[^"]*"/g, "") // Убираем src атрибуты
         .replace(/alt="[^"]*"/g, "") // Убираем alt атрибуты
         .replace(/data-[^=]*="[^"]*"/g, "") // Убираем data-атрибуты
+        .replace(/srcset="[^"]*"/g, "") // Убираем srcset атрибуты
+        .replace(/sizes="[^"]*"/g, "") // Убираем sizes атрибуты
         .replace(/\s+/g, " ") // Убираем множественные пробелы
         .trim();
       
@@ -746,7 +887,32 @@ async function getCareInfo(breed) {
   }
 
   // Fallback на Википедию
-  const title = await searchBreedArticle(breed);
+  let title = await searchBreedArticle(breed);
+  
+  // Если не нашли, пробуем альтернативные варианты названия
+  if (!title) {
+    // Пробуем без дополнительных слов
+    const simpleBreed = breed.split(" ")[0];
+    if (simpleBreed !== breed && simpleBreed.length > 3) {
+      title = await searchBreedArticle(simpleBreed);
+    }
+  }
+  
+  // Пробуем варианты с дефисами
+  if (!title) {
+    const variants = [
+      breed.replace(/\s+/g, "-"),
+      breed.replace(/\s+/g, ""),
+      breed.replace(/-/g, " ")
+    ];
+    for (const variant of variants) {
+      if (variant !== breed && variant.length > 3) {
+        title = await searchBreedArticle(variant);
+        if (title) break;
+      }
+    }
+  }
+  
   if (!title) return null;
 
   const source = await getArticleSource(title);
@@ -796,15 +962,33 @@ async function getCareInfo(breed) {
   // 3) Если всё ещё не нашли, ищем в общих разделах
   if (!section) {
     // Пробуем найти разделы "Характер" или "Особенности", там часто есть информация об уходе
-    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание"]);
+    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание", "здоровье", "внешний вид"]);
     if (charSection) {
       const charStripped = stripWikiMarkup(charSection);
       const sentences = charStripped.split(/(?<=[.!?])\s+/);
       const careSentences = sentences.filter(s => 
-        /уход|содержание|груминг|расчёс|купа|чист/i.test(s)
+        /уход|содержание|груминг|расчёс|купа|чист|шерсть|вычёсыв/i.test(s) && s.length > 30
       );
       if (careSentences.length > 0) {
         section = cleanSummary(careSentences.join(" "), 5, 1000);
+      }
+    }
+  }
+
+  // 4) Если всё ещё ничего не нашли, пробуем извлечь общую информацию из начала статьи
+  if (!section || section.length < 100) {
+    const paragraphs = source.split(/\n\n+/).slice(0, 15);
+    const relevantText = paragraphs.join(" ");
+    const stripped = stripWikiMarkup(relevantText);
+    
+    // Ищем любые упоминания об уходе в общем тексте
+    if (/уход|содержание|груминг/i.test(stripped)) {
+      const sentences = stripped.split(/(?<=[.!?])\s+/);
+      const careMentions = sentences.filter(s => 
+        /уход|содержание|груминг|расчёс|купа|чист|шерсть/i.test(s) && s.length > 30
+      );
+      if (careMentions.length > 0) {
+        section = cleanSummary(careMentions.join(" "), 4, 800);
       }
     }
   }
@@ -831,7 +1015,32 @@ async function getFoodInfo(breed) {
   }
 
   // Fallback на Википедию
-  const title = await searchBreedArticle(breed);
+  let title = await searchBreedArticle(breed);
+  
+  // Если не нашли, пробуем альтернативные варианты названия
+  if (!title) {
+    // Пробуем без дополнительных слов
+    const simpleBreed = breed.split(" ")[0];
+    if (simpleBreed !== breed && simpleBreed.length > 3) {
+      title = await searchBreedArticle(simpleBreed);
+    }
+  }
+  
+  // Пробуем варианты с дефисами
+  if (!title) {
+    const variants = [
+      breed.replace(/\s+/g, "-"),
+      breed.replace(/\s+/g, ""),
+      breed.replace(/-/g, " ")
+    ];
+    for (const variant of variants) {
+      if (variant !== breed && variant.length > 3) {
+        title = await searchBreedArticle(variant);
+        if (title) break;
+      }
+    }
+  }
+  
   if (!title) return null;
 
   const source = await getArticleSource(title);
@@ -875,16 +1084,52 @@ async function getFoodInfo(breed) {
   // 3) Если всё ещё не нашли, ищем в общих разделах
   if (!section) {
     // Пробуем найти разделы "Характер" или "Особенности", там иногда есть информация о питании
-    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание", "здоровье"]);
+    const charSection = extractSectionByHeading(source, ["характер", "особенности", "описание", "здоровье", "внешний вид", "стандарт"]);
     if (charSection) {
       const charStripped = stripWikiMarkup(charSection);
       const sentences = charStripped.split(/(?<=[.!?])\s+/);
       const foodSentences = sentences.filter(s => 
-        /питание|корм|кормление|рацион|еда/i.test(s)
+        /питание|корм|кормление|рацион|еда|кормить/i.test(s) && s.length > 30
       );
       if (foodSentences.length > 0) {
         section = cleanSummary(foodSentences.join(" "), 5, 1000);
       }
+    }
+  }
+
+  // 4) Если всё ещё ничего не нашли, пробуем извлечь общую информацию из начала статьи
+  if (!section || section.length < 100) {
+    const paragraphs = source.split(/\n\n+/).slice(0, 20);
+    const relevantText = paragraphs.join(" ");
+    const stripped = stripWikiMarkup(relevantText);
+    
+    // Ищем любые упоминания о питании в общем тексте
+    if (/питание|корм|кормление|рацион/i.test(stripped)) {
+      const sentences = stripped.split(/(?<=[.!?])\s+/);
+      const foodMentions = sentences.filter(s => 
+        /питание|корм|кормление|рацион|еда|кормить/i.test(s) && s.length > 30
+      );
+      if (foodMentions.length > 0) {
+        section = cleanSummary(foodMentions.join(" "), 4, 800);
+      }
+    }
+  }
+
+  // 5) Последняя попытка - ищем в любом месте статьи любые упоминания о питании
+  if (!section || section.length < 100) {
+    const fullStripped = stripWikiMarkup(source);
+    const allSentences = fullStripped.split(/(?<=[.!?])\s+/);
+    const foodRelated = allSentences.filter(s => {
+      const lower = s.toLowerCase();
+      return (lower.includes("питание") || lower.includes("корм") || 
+              lower.includes("кормление") || lower.includes("рацион") ||
+              lower.includes("еда") || lower.includes("кормить")) &&
+             s.length > 40 && s.length < 500;
+    });
+    
+    if (foodRelated.length > 0) {
+      // Берем первые несколько релевантных предложений
+      section = cleanSummary(foodRelated.slice(0, 6).join(" "), 5, 900);
     }
   }
 
@@ -955,9 +1200,39 @@ app.post("/webhook", async (req, res) => {
         return res.json({ fulfillmentText: "Укажите породу." });
       }
 
-      const summary = await getBreedSummary(breed);
-      if (!summary) {
-        return res.json({ fulfillmentText: "Информация не найдена." });
+      let summary = await getBreedSummary(breed);
+      
+      // Если не нашли через стандартный поиск, пробуем альтернативные варианты
+      if (!summary || summary.length < 100) {
+        // Пробуем поиск без дополнительных слов
+        const simpleBreed = breed.split(" ")[0];
+        if (simpleBreed !== breed && simpleBreed.length > 3) {
+          summary = await getBreedSummary(simpleBreed);
+        }
+      }
+      
+      // Если всё ещё не нашли, пробуем поиск без последнего слова
+      if (!summary || summary.length < 100) {
+        const words = breed.split(" ");
+        if (words.length > 1) {
+          const withoutLast = words.slice(0, -1).join(" ");
+          summary = await getBreedSummary(withoutLast);
+        }
+      }
+      
+      // Если всё ещё не нашли, пробуем поиск только по первому и последнему слову
+      if (!summary || summary.length < 100) {
+        const words = breed.split(" ").filter(w => w.length > 2);
+        if (words.length > 2) {
+          const firstLast = words[0] + " " + words[words.length - 1];
+          summary = await getBreedSummary(firstLast);
+        }
+      }
+      
+      if (!summary || summary.length < 50) {
+        return res.json({ 
+          fulfillmentText: `К сожалению, я не смог найти подробную информацию о породе "${breed}". Это может быть редкая или новая порода. Попробуйте уточнить название породы или задать вопрос о другой породе.`
+        });
       }
 
       // Сохраняем породу в контексте для следующих вопросов
@@ -980,9 +1255,32 @@ app.post("/webhook", async (req, res) => {
       }
 
       try {
-        const care = await getCareInfo(breed);
+      let care = await getCareInfo(breed);
+      
+      // Если не нашли, пробуем альтернативные варианты
+      if (!care || care.length < 100) {
+        const simpleBreed = breed.split(" ")[0];
+        if (simpleBreed !== breed && simpleBreed.length > 3) {
+          care = await getCareInfo(simpleBreed);
+        }
+      }
+      
+      // Пробуем варианты с дефисами
+      if (!care || care.length < 100) {
+        const variants = [
+          breed.replace(/\s+/g, "-"),
+          breed.replace(/-/g, " ")
+        ];
+        for (const variant of variants) {
+          if (variant !== breed && variant.length > 3) {
+            care = await getCareInfo(variant);
+            if (care && care.length >= 100) break;
+          }
+        }
+      }
+      
         const response = {
-          fulfillmentText: care || `К сожалению, я не смог найти подробную информацию об уходе за породой "${breed}". Попробуйте уточнить название породы или задать вопрос о другой породе.`
+          fulfillmentText: care || `К сожалению, я не смог найти подробную информацию об уходе за породой "${breed}". Это может быть редкая порода. Рекомендую обратиться к ветеринару или специалисту по данной породе для получения индивидуальных рекомендаций.`
         };
         
         const breedContext = createBreedContext(req, breed);
@@ -1006,9 +1304,18 @@ app.post("/webhook", async (req, res) => {
       }
 
       try {
-        const food = await getFoodInfo(breed);
+      let food = await getFoodInfo(breed);
+      
+      // Если не нашли, пробуем альтернативные варианты
+      if (!food || food.length < 100) {
+        const simpleBreed = breed.split(" ")[0];
+        if (simpleBreed !== breed && simpleBreed.length > 3) {
+          food = await getFoodInfo(simpleBreed);
+        }
+      }
+      
         const response = {
-          fulfillmentText: food || `К сожалению, я не смог найти подробную информацию о питании для породы "${breed}". Попробуйте уточнить название породы или задать вопрос о другой породе.`
+          fulfillmentText: food || `К сожалению, я не смог найти подробную информацию о питании для породы "${breed}". Это может быть редкая порода. Рекомендую обратиться к ветеринару для составления индивидуального рациона, подходящего для вашей кошки.`
         };
         
         const breedContext = createBreedContext(req, breed);

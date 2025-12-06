@@ -1,0 +1,1977 @@
+[
+  {
+    "breed": "Турецкая ангора",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 804,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 727,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 202,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Манкс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 308,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 149,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Американская лирандская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 22,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 167,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 168,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Японский бобтейл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 400,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 349,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 324,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Ориентальная длинношёрстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1094,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 457,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 172,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Украинский левкой",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 918,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 322,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Рэгдолл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 608,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 469,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сингапурская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1101,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 648,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Мэнкс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 575,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 727,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Норвежская лесная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 822,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 229,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 951,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Чаузи",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 378,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 472,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 513,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Тояма",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1008,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 279,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Колор-пойнт короткошёрстный",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 939,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 924,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 172,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Бенгальская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 732,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 363,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 680,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сиамская классическая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 775,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 588,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 166,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Американский кёрл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 346,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 591,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 609,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Минскин",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 883,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 498,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 276,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Бристольская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 327,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 157,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Нибелунг",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 489,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 631,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 422,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Хайленд-фолд",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 346,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 591,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 609,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Тойгер",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1106,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 151,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Меконгский бобтейл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 930,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 306,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 356,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Шотландская вислоухая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 346,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 609,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Полосатая американская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 339,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 294,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 167,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Пикси-боб",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 385,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      }
+    }
+  },
+  {
+    "breed": "Тиффани",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 425,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 152,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Квинслендская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 969,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 157,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 158,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Американская жесткошерстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 922,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 500,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 640,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Манчкин",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 328,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 420,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 249,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Гималайская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1126,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 204,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 156,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Китайская ли хуа",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 358,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 512,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 681,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сфинкс петербургский",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 674,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 405,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 663,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Корниш-рекс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 624,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 725,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Донской велюр",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 918,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      }
+    }
+  },
+  {
+    "breed": "Калифорнийская сияющая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      }
+    }
+  },
+  {
+    "breed": "Курильский бобтейл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 400,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      }
+    }
+  },
+  {
+    "breed": "Сингапурская дымчатая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1101,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      }
+    }
+  },
+  {
+    "breed": "Самфур",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 22,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 151,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Русская голубая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 400,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 349,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 324,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Абиссинская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 845,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 586,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 578,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Бразильская короткошёрстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 924,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 624,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 443,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Кохона",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 537,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 510,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 641,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Азиатская табби",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 775,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 588,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 160,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Шантильи-тиффани",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 843,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 439,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 639,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Оцикет",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 403,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 286,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Саванна",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 809,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 494,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 475,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Египетская мау",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 523,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 158,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 159,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Девон-рекс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 431,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 660,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сфинкс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 508,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 635,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сиамская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 890,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 540,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 812,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Австралийский мист",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1095,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 781,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 749,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Левкой длинношёрстный",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 918,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 322,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Мэнкс длинношёрстный",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 500,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 575,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 727,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Шотландская прямоухая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 346,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 591,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 609,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Кимрик",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 650,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 436,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Балинезийская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 500,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 0,
+        "isError": true,
+        "error": "timeout of 20000ms exceeded"
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 474,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Мейн-кун",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 822,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 709,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 782,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Ликкой",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 466,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 993,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Американский рингтейл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1497,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 165,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 166,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Сибирская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 617,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 571,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Британская короткошёрстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 775,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 663,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 601,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Бурманская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 305,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 675,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 576,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Серая дымчатая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1095,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 781,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 749,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Яванезийская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 22,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 156,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 157,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Гавана",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 930,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 494,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 492,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Аравийский мау",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 930,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 306,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 356,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Донской сфинкс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 918,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 322,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Селадон",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1320,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 151,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 152,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Эльф",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 930,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 223,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 1193,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Бамбино",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 883,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 771,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 699,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сноу-шу",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 890,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 435,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 336,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Селкирк-рекс длинношерстный",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 500,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 362,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 547,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Петерболд",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 494,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 407,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Кашмирская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 381,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 154,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 155,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Бомбейская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 778,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 478,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 155,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Минипард",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 22,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 152,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 153,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Тонкинская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 614,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 528,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 1192,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Серенгети",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 908,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 608,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 566,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Корат",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 468,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 525,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 497,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Двэльф",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 789,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 581,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 510,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Тайская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 939,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 924,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 152,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Персидская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 495,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 568,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 435,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Американская короткошёрстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 339,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 500,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 640,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Азиатская дымчатая",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 403,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 286,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Лаперм",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1091,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 450,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 632,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Сококе",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 544,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 238,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 633,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Рагамаффин",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 930,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 465,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 450,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Цейлонская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 983,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 682,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 327,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Экзотическая короткошёрстная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1184,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 469,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 610,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Бирманская",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 580,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 396,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 349,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Ликой",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 490,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 429,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Наполеон",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 328,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 667,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 1186,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Корейская бобтейл",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1037,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 709,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 749,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Ориентальная",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1094,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 457,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 157,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Мандалай",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 1077,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 152,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 643,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Селкирк-рекс",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 798,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 362,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 547,
+        "isError": false
+      }
+    }
+  },
+  {
+    "breed": "Тойбоб",
+    "intents": {
+      "AskBreedInfo": {
+        "success": false,
+        "length": 22,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": false,
+        "length": 150,
+        "isError": true
+      },
+      "AskFoodInfo": {
+        "success": false,
+        "length": 151,
+        "isError": true
+      }
+    }
+  },
+  {
+    "breed": "Хайленд-страйт",
+    "intents": {
+      "AskBreedInfo": {
+        "success": true,
+        "length": 346,
+        "isError": false
+      },
+      "AskCareInfo": {
+        "success": true,
+        "length": 591,
+        "isError": false
+      },
+      "AskFoodInfo": {
+        "success": true,
+        "length": 609,
+        "isError": false
+      }
+    }
+  }
+]
